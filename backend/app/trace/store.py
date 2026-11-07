@@ -1,0 +1,477 @@
+"""Trace 链路存储（SQLite）：一次 Turn 一条 trace，节点写入 trace_events。
+
+表结构见 docs/03-开发文档.md §5.2。
+所有 SQL 通过 asyncio.to_thread 执行，避免阻塞事件循环。
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import sqlite3
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Iterator
+
+from app.utils import avg_int, new_id, now_iso, percentile
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS traces (
+  trace_id    TEXT PRIMARY KEY,
+  session_id  TEXT NOT NULL,
+  user_id     TEXT,
+  input       TEXT NOT NULL,
+  skill       TEXT,
+  status      TEXT NOT NULL,
+  latency_ms  INTEGER DEFAULT 0,
+  tool_calls  INTEGER DEFAULT 0,
+  tokens_in   INTEGER DEFAULT 0,
+  tokens_out  INTEGER DEFAULT 0,
+  error       TEXT,
+  created_at  TEXT NOT NULL,
+  finished_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_traces_created ON traces(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS trace_events (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  trace_id   TEXT NOT NULL,
+  seq        INTEGER NOT NULL,
+  type       TEXT NOT NULL,
+  name       TEXT,
+  status     TEXT DEFAULT 'ok',
+  latency_ms INTEGER DEFAULT 0,
+  payload    TEXT,
+  ts         TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_events_trace ON trace_events(trace_id, seq);
+
+CREATE TABLE IF NOT EXISTS approvals (
+  approval_id     TEXT PRIMARY KEY,
+  trace_id        TEXT,
+  session_id      TEXT,
+  tool            TEXT NOT NULL,
+  args            TEXT,
+  risk            TEXT,
+  reason          TEXT,
+  status          TEXT NOT NULL,
+  requester       TEXT,
+  approver        TEXT,
+  decision_reason TEXT,
+  created_at      TEXT NOT NULL,
+  decided_at      TEXT,
+  expires_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals(status);
+"""
+
+
+def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    return {k: row[k] for k in row.keys()}
+
+
+class TraceStore:
+    def __init__(self, db_path: str) -> None:
+        self.db_path = str(Path(db_path))
+        self._write_lock = asyncio.Lock()
+
+    # ------------------------------------------------------------------ #
+    # 基础设施
+    # ------------------------------------------------------------------ #
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+
+    async def _run(self, fn):
+        return await asyncio.to_thread(fn)
+
+    def init(self) -> None:
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        with self._conn() as conn:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.executescript(SCHEMA)
+
+    # ------------------------------------------------------------------ #
+    # Trace 生命周期
+    # ------------------------------------------------------------------ #
+    async def start_trace(self, session_id: str, user_id: str, user_input: str) -> str:
+        trace_id = new_id("t")
+        created = now_iso()
+
+        def _write() -> None:
+            with self._conn() as conn:
+                conn.execute(
+                    "INSERT INTO traces (trace_id, session_id, user_id, input, status, created_at)"
+                    " VALUES (?,?,?,?,?,?)",
+                    (trace_id, session_id, user_id, user_input, "running", created),
+                )
+
+        async with self._write_lock:
+            await self._run(_write)
+        return trace_id
+
+    async def set_trace_skill(self, trace_id: str, skill: str) -> None:
+        def _write() -> None:
+            with self._conn() as conn:
+                conn.execute("UPDATE traces SET skill=? WHERE trace_id=?", (skill, trace_id))
+
+        async with self._write_lock:
+            await self._run(_write)
+
+    async def add_event(
+        self,
+        trace_id: str,
+        event_type: str,
+        name: str = "",
+        status: str = "ok",
+        latency_ms: int = 0,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        ts = now_iso()
+
+        def _write() -> None:
+            with self._conn() as conn:
+                seq = conn.execute(
+                    "SELECT COALESCE(MAX(seq), 0) + 1 FROM trace_events WHERE trace_id = ?",
+                    (trace_id,),
+                ).fetchone()[0]
+                conn.execute(
+                    "INSERT INTO trace_events (trace_id, seq, type, name, status, latency_ms, payload, ts)"
+                    " VALUES (?,?,?,?,?,?,?,?)",
+                    (
+                        trace_id, seq, event_type, name, status, latency_ms,
+                        json.dumps(payload or {}, ensure_ascii=False), ts,
+                    ),
+                )
+
+        async with self._write_lock:
+            await self._run(_write)
+
+    async def finish_trace(
+        self,
+        trace_id: str,
+        status: str,
+        *,
+        latency_ms: int = 0,
+        tool_calls: int = 0,
+        tokens_in: int = 0,
+        tokens_out: int = 0,
+        error: str | None = None,
+    ) -> None:
+        finished = now_iso()
+
+        def _write() -> None:
+            with self._conn() as conn:
+                conn.execute(
+                    "UPDATE traces SET status=?, latency_ms=?, tool_calls=?, tokens_in=?,"
+                    " tokens_out=?, error=?, finished_at=? WHERE trace_id=?",
+                    (status, latency_ms, tool_calls, tokens_in, tokens_out, error, finished, trace_id),
+                )
+
+        async with self._write_lock:
+            await self._run(_write)
+
+    # ------------------------------------------------------------------ #
+    # 查询
+    # ------------------------------------------------------------------ #
+    async def get_trace(self, trace_id: str) -> dict[str, Any] | None:
+        def _read():
+            with self._conn() as conn:
+                row = conn.execute("SELECT * FROM traces WHERE trace_id=?", (trace_id,)).fetchone()
+                return _row_to_dict(row) if row else None
+
+        return await self._run(_read)
+
+    async def get_events(self, trace_id: str) -> list[dict[str, Any]]:
+        def _read():
+            with self._conn() as conn:
+                rows = conn.execute(
+                    "SELECT seq, type, name, status, latency_ms, payload, ts FROM trace_events"
+                    " WHERE trace_id=? ORDER BY seq",
+                    (trace_id,),
+                ).fetchall()
+                out = []
+                for row in rows:
+                    item = _row_to_dict(row)
+                    try:
+                        item["payload"] = json.loads(item["payload"] or "{}")
+                    except json.JSONDecodeError:
+                        item["payload"] = {}
+                    out.append(item)
+                return out
+
+        return await self._run(_read)
+
+    async def recent_traces(self, limit: int = 20) -> list[dict[str, Any]]:
+        def _read():
+            with self._conn() as conn:
+                rows = conn.execute(
+                    "SELECT * FROM traces ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
+                ).fetchall()
+                return [_row_to_dict(r) for r in rows]
+
+        return await self._run(_read)
+
+    async def list_traces(
+        self, *, status: str | None = None, skill: str | None = None,
+        user_id: str | None = None, limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """可筛选的 Trace 列表（状态/技能/用户），供排障与审计检索。"""
+
+        def _read():
+            sql = "SELECT * FROM traces WHERE 1=1"
+            params: list[Any] = []
+            if status:
+                sql += " AND status=?"
+                params.append(status)
+            if skill:
+                sql += " AND skill=?"
+                params.append(skill)
+            if user_id:
+                sql += " AND user_id=?"
+                params.append(user_id)
+            sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
+            params.append(max(1, min(limit, 200)))
+            with self._conn() as conn:
+                rows = conn.execute(sql, tuple(params)).fetchall()
+                return [_row_to_dict(r) for r in rows]
+
+        return await self._run(_read)
+
+    async def count_traces(self) -> int:
+        def _read():
+            with self._conn() as conn:
+                return conn.execute("SELECT COUNT(*) FROM traces").fetchone()[0]
+
+        return await self._run(_read)
+
+    # ------------------------------------------------------------------ #
+    # 看板聚合
+    # ------------------------------------------------------------------ #
+    async def dashboard(self, limit: int = 20) -> dict[str, Any]:
+        traces = await self.recent_traces(limit)
+
+        def _aggregate() -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+            with self._conn() as conn:
+                status_rows = conn.execute(
+                    "SELECT status, latency_ms, skill FROM traces"
+                ).fetchall()
+                event_rows = conn.execute(
+                    "SELECT payload, status, latency_ms, type FROM trace_events"
+                    " WHERE type IN ('tool_result','tool_call') ORDER BY id DESC LIMIT 1000"
+                ).fetchall()
+            return (
+                [dict(r) for r in status_rows],
+                [dict(r) for r in event_rows],
+                [],
+            )
+
+        status_rows, event_rows, _ = await self._run(_aggregate)
+
+        finished = [r for r in status_rows if r["status"] in ("success", "failed")]
+        success = sum(1 for r in finished if r["status"] == "success")
+        failed = sum(1 for r in finished if r["status"] == "failed")
+        running = sum(1 for r in status_rows if r["status"] == "running")
+        latencies = [int(r["latency_ms"] or 0) for r in finished]
+        total = len(finished)
+
+        tool_stats: dict[str, dict[str, Any]] = {}
+        skill_counts = {"skill": 0, "tool": 0}
+        for row in event_rows:
+            if row["type"] != "tool_result":
+                continue
+            try:
+                payload = json.loads(row["payload"] or "{}")
+            except json.JSONDecodeError:
+                continue
+            name = payload.get("name") or "unknown"
+            stats = tool_stats.setdefault(
+                name,
+                {"calls": 0, "failed": 0, "avg_ms": 0, "skill": payload.get("skill") or "system", "label": payload.get("label") or name},
+            )
+            stats["calls"] += 1
+            stats["failed"] += 1 if row["status"] in ("error", "rejected", "denied") else 0
+            stats["avg_ms"] += int(row["latency_ms"] or 0)
+            stats["label"] = payload.get("label") or stats["label"]
+        for stats in tool_stats.values():
+            stats["avg_ms"] = int(round(stats["avg_ms"] / stats["calls"])) if stats["calls"] else 0
+
+        # Skill 统计：按 trace.skill 聚合（每次 Turn 只命中一个子 Skill）
+        skill_stats: dict[str, dict[str, Any]] = {}
+        for row in status_rows:
+            skill = row.get("skill")
+            if not skill:
+                continue
+            stats = skill_stats.setdefault(skill, {"calls": 0, "failed": 0, "avg_ms": 0})
+            stats["calls"] += 1
+            stats["failed"] += 1 if row["status"] == "failed" else 0
+            stats["avg_ms"] += int(row["latency_ms"] or 0)
+        for stats in skill_stats.values():
+            stats["avg_ms"] = int(round(stats["avg_ms"] / stats["calls"])) if stats["calls"] else 0
+
+        skill_counts = {
+            "skill": sum(s["calls"] for s in skill_stats.values()),
+            "tool": sum(s["calls"] for s in tool_stats.values()),
+        }
+
+        return {
+            "summary": {
+                "success_rate": int(round(success / total * 100)) if total else 0,
+                "success": success,
+                "failed": failed,
+                "total": total,
+                "running": running,
+            },
+            "latency": {
+                "p50": percentile(latencies, 0.50),
+                "p95": percentile(latencies, 0.95),
+                "p99": percentile(latencies, 0.99),
+                "avg": avg_int(latencies),
+            },
+            "calls": skill_counts,
+            "tool_stats": tool_stats,
+            "skill_stats": skill_stats,
+            "recent": traces,
+        }
+
+    # ------------------------------------------------------------------ #
+    # 审批单
+    # ------------------------------------------------------------------ #
+    async def create_approval(
+        self,
+        *,
+        trace_id: str,
+        session_id: str,
+        tool: str,
+        args: dict[str, Any],
+        risk: str,
+        reason: str,
+        timeout_s: int,
+        requester: str = "",
+    ) -> dict[str, Any]:
+        approval_id = new_id("ap")
+        created = now_iso()
+        expires = (datetime.now().astimezone() + timedelta(seconds=timeout_s)).isoformat(timespec="seconds")
+
+        def _write():
+            with self._conn() as conn:
+                conn.execute(
+                    "INSERT INTO approvals (approval_id, trace_id, session_id, tool, args, risk, reason,"
+                    " status, requester, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        approval_id, trace_id, session_id, tool,
+                        json.dumps(args, ensure_ascii=False), risk, reason,
+                        "pending", requester, created, expires,
+                    ),
+                )
+
+        async with self._write_lock:
+            await self._run(_write)
+        return {"approval_id": approval_id, "created_at": created, "expires_at": expires}
+
+    async def get_approval(self, approval_id: str) -> dict[str, Any] | None:
+        def _read():
+            with self._conn() as conn:
+                row = conn.execute("SELECT * FROM approvals WHERE approval_id=?", (approval_id,)).fetchone()
+                if not row:
+                    return None
+                item = _row_to_dict(row)
+                try:
+                    item["args"] = json.loads(item["args"] or "{}")
+                except json.JSONDecodeError:
+                    item["args"] = {}
+                return item
+
+        return await self._run(_read)
+
+    async def pending_approvals(self) -> list[dict[str, Any]]:
+        def _read():
+            with self._conn() as conn:
+                rows = conn.execute(
+                    "SELECT * FROM approvals WHERE status='pending' ORDER BY created_at DESC"
+                ).fetchall()
+                out = []
+                for row in rows:
+                    item = _row_to_dict(row)
+                    try:
+                        item["args"] = json.loads(item["args"] or "{}")
+                    except json.JSONDecodeError:
+                        item["args"] = {}
+                    out.append(item)
+                return out
+
+        return await self._run(_read)
+
+    async def decide_approval(self, approval_id: str, decision: str, reason: str = "", approver: str = "") -> bool:
+        """CAS 更新：只有 pending 才能变成终态，返回是否成功（幂等）。"""
+        decided = now_iso()
+
+        def _write() -> bool:
+            with self._conn() as conn:
+                cur = conn.execute(
+                    "UPDATE approvals SET status=?, approver=?, decision_reason=?, decided_at=?"
+                    " WHERE approval_id=? AND status='pending'",
+                    (decision, approver or None, reason or None, decided, approval_id),
+                )
+                return cur.rowcount == 1
+
+        async with self._write_lock:
+            return await self._run(_write)
+
+    async def expire_approval(self, approval_id: str) -> bool:
+        def _write() -> bool:
+            with self._conn() as conn:
+                cur = conn.execute(
+                    "UPDATE approvals SET status='timeout', decided_at=? WHERE approval_id=? AND status='pending'",
+                    (now_iso(), approval_id),
+                )
+                return cur.rowcount == 1
+
+        async with self._write_lock:
+            return await self._run(_write)
+
+    def ensure_schema_columns(self) -> None:
+        """轻量迁移：给旧库补 requester（审批发起人）。"""
+        with self._conn() as conn:
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(approvals)").fetchall()}
+            if "requester" not in cols:
+                conn.execute("ALTER TABLE approvals ADD COLUMN requester TEXT")
+
+    async def reconcile_stale(self) -> dict[str, int]:
+        """服务启动时收敛上次崩溃遗留的中间态，避免看板/审批长期失真。"""
+        now = now_iso()
+
+        def _write() -> tuple[int, int]:
+            with self._conn() as conn:
+                traces = conn.execute(
+                    "UPDATE traces SET status='failed', error=COALESCE(error,'server_restart'), finished_at=?"
+                    " WHERE status='running'",
+                    (now,),
+                ).rowcount
+                approvals = conn.execute(
+                    "UPDATE approvals SET status='cancelled', decided_at=?"
+                    " WHERE status='pending'",
+                    (now,),
+                ).rowcount
+                return traces, approvals
+
+        async with self._write_lock:
+            traces, approvals = await self._run(_write)
+        return {"traces_failed": traces, "approvals_cancelled": approvals}
+
+    async def cancel_pending_by_trace(self, trace_id: str) -> None:
+        def _write() -> None:
+            with self._conn() as conn:
+                conn.execute(
+                    "UPDATE approvals SET status='cancelled', decided_at=? WHERE trace_id=? AND status='pending'",
+                    (now_iso(), trace_id),
+                )
+
+        async with self._write_lock:
+            await self._run(_write)

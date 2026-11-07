@@ -1,0 +1,49 @@
+# ===== 密钥与本地配置 =====
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# ===== 运行时数据（本地生成，不入库）=====
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.pytest-tmp/
+pytest-cache-files-*/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+
+# ===== 临时 / 工具产物 =====
+.tmp/
+.t3probe/
+.probe*/
+.spec/
+.demo/
+.workbuddy/
+*.genie
+.DS_Store
+Thumbs.db
+normalprobe*/
+.cacheprobe/
+.pytest_cache2/
+
+# ===== 求职素材（不随公开仓库发布）=====
+assets/02-拜访通-简历条目.jpg
+assets/03-简历截图.jpg
+docs/06-演示脚本与面试口径.md
+docs/08-模板能力对齐与面试口径.md
