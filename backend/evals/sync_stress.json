@@ -3,36 +3,56 @@
     "stale_skip": 295,
     "writes": 105,
     "lock_errors": 0,
-    "elapsed_ms": 1318.6,
+    "elapsed_ms": 1352.3,
     "docs": 40,
     "stale_overwrites": 0,
-    "content_mismatch": 0
+    "content_mismatch": 0,
+    "rounds": 1,
+    "stale_runs": [
+      0
+    ]
   },
   "naive_8t": {
-    "stale_skip": 273,
-    "writes": 127,
+    "stale_skip": 261,
+    "writes": 139,
     "lock_errors": 0,
-    "elapsed_ms": 885.1,
+    "elapsed_ms": 1054.6,
     "docs": 40,
-    "stale_overwrites": 7,
-    "content_mismatch": 7
+    "stale_overwrites": 5,
+    "content_mismatch": 5,
+    "rounds": 3,
+    "stale_runs": [
+      0,
+      4,
+      5
+    ]
   },
   "guarded_1t": {
     "stale_skip": 295,
     "writes": 105,
     "lock_errors": 0,
-    "elapsed_ms": 2449.8,
+    "elapsed_ms": 2545.0,
     "docs": 40,
     "stale_overwrites": 0,
-    "content_mismatch": 0
+    "content_mismatch": 0,
+    "rounds": 1,
+    "stale_runs": [
+      0
+    ]
   },
   "guarded_8t": {
-    "stale_skip": 284,
-    "writes": 116,
+    "stale_skip": 288,
+    "writes": 112,
     "lock_errors": 0,
-    "elapsed_ms": 1473.8,
+    "elapsed_ms": 1524.1,
     "docs": 40,
     "stale_overwrites": 0,
-    "content_mismatch": 0
+    "content_mismatch": 0,
+    "rounds": 3,
+    "stale_runs": [
+      0,
+      0,
+      0
+    ]
   }
 }
