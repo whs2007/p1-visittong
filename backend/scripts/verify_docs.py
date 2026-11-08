@@ -268,6 +268,16 @@ def main() -> int:
     parser.add_argument("--no-pytest", action="store_true", help="跳过 pytest 收集（省 10s）")
     args = parser.parse_args()
 
+    # 这个门禁的输入之一是 docs/，而公开仓库**有意**不收录 docs（.gitignore）。
+    # CI 的 checkout 里没有 docs/，所有锚点正则都会落空——第一次推上 CI 就是这么红的。
+    # 此时不是「全对」，是「没得查」：显式跳过并说明原因，绝不冒充绿灯。
+    # 本地（docs/ 在）它照常全量核对——这是它的主战场：改了数字忘改文档，立刻红。
+    if not (ROOT / "docs").is_dir():
+        print("\n文档 ↔ 代码 一致性：SKIP——当前仓库没有 docs/（公开仓库有意不收录文档），")
+        print("文档数字核对只在有 docs/ 的开发/发布机上生效；此步骤保留在 CI 是为了让"
+              "「步骤与 verify_all 一致」这件事可见，而不是为了制造一个空跑的绿灯。")
+        return 0
+
     claims = build_claims(args.no_pytest)
     failures: list[str] = []
     rows: list[dict] = []
