@@ -77,8 +77,6 @@ python backend/run.py
 
 ```text
 p1-visittong/
-├─ assets/                 架构图
-├─ docs/                   需求 → PRD → 技术方案 → 数据模型 → 验收 → 架构对照
 ├─ backend/
 │  ├─ run.py               启动入口
 │  ├─ requirements*.txt    依赖锁定
@@ -120,7 +118,7 @@ curl -X POST -H "X-User-Id: manager-001" http://127.0.0.1:8020/api/agents/reload
 python scripts/smoke_scenarios.py                # 端到端 7 组（服务需保持运行）
 ```
 
-内置两套声明：`visit`（全能力）与 `ops_readonly`（只装配 `todo_query` + 两个只读工具），用来证明**同一套 Runtime、不同能力集**。详见 [docs/07](docs/07-Pi-Agent架构对照与优化.md)。
+内置两套声明：`visit`（全能力）与 `ops_readonly`（只装配 `todo_query` + 两个只读工具），用来证明**同一套 Runtime、不同能力集**。装配层实现见 `backend/app/runtime/`，实证见 `backend/scripts/pi_evidence.py`。
 
 ## 5. 关键机制
 
@@ -158,20 +156,7 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 
 > **关于「100% 审批」的准确口径**：模型自主发起的高危动作（`cancel_visit_plan` 等）无例外进入 HITL；但系统保留一条**有意建模**的人工通道——主管在模型不可用时可直接取消计划，不经过 Agent 审批。这不是未声明的绕过：限定 manager/admin、销售本人不可替代操作、仍走显式 FSM 迁移表、仍写审计，且豁免理由 `explicit_human_action_by_manager` 与台账端点都可举证。设计权衡是：审批约束的是「模型自主发起的可能误判动作」，不是「有身份、有明确意图的人」；若主管不在时模型又不可用，把人工通道也锁进审批等于业务停摆。详见 `routes_visit.py:cancel_plan_manual` 与 `test_governance.py`。
 
-## 8. 文档索引
-
-| 文档 | 内容 |
-|---|---|
-| [需求与场景](docs/01-需求与场景.md) | 背景、角色、5 个核心场景、边界、指标 |
-| [PRD](docs/02-PRD.md) | 28 条功能（F1.x）、页面与交互 |
-| [技术方案](docs/03-技术方案.md) | 选型、架构、会话树、Skill 编排、审批、避坑 |
-| [数据模型与接口契约](docs/04-数据模型与接口契约.md) | 13 张表 DDL、Redis Key、REST/SSE/卡片协议、错误码 |
-| [里程碑与验收](docs/05-里程碑与验收.md) | 7 天拆分、AC-01~AC-22、DoD |
-| [Pi Agent 架构对照与优化](docs/07-Pi-Agent架构对照与优化.md) | 按 Pi（earendil-works/pi）对齐事件流、工具扩展点、会话树、压缩 |
-
-> 演示脚本与求职话术类文档、简历截图属于非项目素材，未收录进公开仓库。
-
-## 9. 边界与已知限制
+## 8. 边界与已知限制
 
 - 仅 Mock CRM / POI；ASR 默认 mock，真实转写需安装 `faster-whisper` 或配置 `ASR_COMMAND` 网关。
 - 知识库为本地向量索引，Milvus 仅为接口占位；Kafka / Hive 为事件箱模拟。
@@ -179,7 +164,7 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 - 前端用 `localStorage` 保存登录态：双人审批演示时主管在第二个标签登录会覆盖共享存储，销售标签请勿刷新（token 仍在内存中）。
 - 本项目只做「同构最小实现 / 原理复现」，不声称重写公司系统；数据 mock，但流程、表结构与治理口径对齐真实系统。
 
-## 10. 本系列项目
+## 9. 本系列项目
 
 三个仓库互相独立、不共享代码，只共享方法论（上下文分层注入、工具执行治理、状态可追溯）：
 
