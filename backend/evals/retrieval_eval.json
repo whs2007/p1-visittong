@@ -15,7 +15,7 @@
         "mrr": 0.9167,
         "negative_false_positive_rate": 0.0833,
         "negative_auto_bind_rate": 0.0833,
-        "latency_p50_ms": 2.12,
+        "latency_p50_ms": 1.71,
         "by_category": {
           "exact": {
             "n": 2,
@@ -63,7 +63,7 @@
         "mrr": 0.9667,
         "negative_false_positive_rate": 0.0833,
         "negative_auto_bind_rate": 0.0,
-        "latency_p50_ms": 0.92,
+        "latency_p50_ms": 0.55,
         "by_category": {
           "exact": {
             "n": 2,
@@ -129,7 +129,7 @@
         "mrr": 0.9167,
         "negative_false_positive_rate": 0.25,
         "negative_auto_bind_rate": 0.0833,
-        "latency_p50_ms": 25.43,
+        "latency_p50_ms": 21.44,
         "by_category": {
           "exact": {
             "n": 2,
@@ -177,7 +177,7 @@
         "mrr": 0.9667,
         "negative_false_positive_rate": 0.0833,
         "negative_auto_bind_rate": 0.0,
-        "latency_p50_ms": 7.53,
+        "latency_p50_ms": 4.99,
         "by_category": {
           "exact": {
             "n": 2,
@@ -241,7 +241,7 @@
     "mrr": 0.9167,
     "negative_false_positive_rate": 0.25,
     "negative_auto_bind_rate": 0.0833,
-    "latency_p50_ms": 25.43,
+    "latency_p50_ms": 21.44,
     "by_category": {
       "exact": {
         "n": 2,
@@ -298,7 +298,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 31.6,
+        "latency_ms": 25.37,
         "top_coverage": 0.9428,
         "auto_bind": false
       },
@@ -316,7 +316,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.24,
+        "latency_ms": 21.57,
         "top_coverage": 0.7471,
         "auto_bind": false
       },
@@ -334,7 +334,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 27.3,
+        "latency_ms": 36.01,
         "top_coverage": 0.5427,
         "auto_bind": false
       },
@@ -348,7 +348,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 23.6,
+        "latency_ms": 21.01,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -362,7 +362,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 25.12,
+        "latency_ms": 22.1,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -384,7 +384,7 @@
         ],
         "pass": false,
         "hit_at_3": true,
-        "latency_ms": 23.42,
+        "latency_ms": 22.12,
         "top_coverage": 0.5528,
         "auto_bind": false
       },
@@ -402,7 +402,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.12,
+        "latency_ms": 19.81,
         "top_coverage": 0.5536,
         "auto_bind": false
       },
@@ -422,7 +422,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.67,
+        "latency_ms": 21.45,
         "top_coverage": 0.6685,
         "auto_bind": false
       },
@@ -440,7 +440,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.27,
+        "latency_ms": 22.01,
         "top_coverage": 0.442,
         "auto_bind": false
       },
@@ -458,7 +458,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.75,
+        "latency_ms": 22.88,
         "top_coverage": 0.5208,
         "auto_bind": false
       },
@@ -476,7 +476,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.4,
+        "latency_ms": 21.37,
         "top_coverage": 0.5285,
         "auto_bind": false
       },
@@ -494,7 +494,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.32,
+        "latency_ms": 20.67,
         "top_coverage": 0.4128,
         "auto_bind": false
       },
@@ -512,7 +512,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.41,
+        "latency_ms": 22.91,
         "top_coverage": 0.462,
         "auto_bind": false
       },
@@ -530,7 +530,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 27.27,
+        "latency_ms": 21.63,
         "top_coverage": 0.5415,
         "auto_bind": false
       },
@@ -550,7 +550,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.03,
+        "latency_ms": 23.42,
         "top_coverage": 0.9403,
         "auto_bind": false
       },
@@ -568,7 +568,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.05,
+        "latency_ms": 20.45,
         "top_coverage": 0.5129,
         "auto_bind": false
       },
@@ -586,7 +586,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.37,
+        "latency_ms": 19.75,
         "top_coverage": 0.6298,
         "auto_bind": false
       },
@@ -604,7 +604,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.62,
+        "latency_ms": 22.05,
         "top_coverage": 0.6044,
         "auto_bind": false
       },
@@ -622,7 +622,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.82,
+        "latency_ms": 22.15,
         "top_coverage": 0.599,
         "auto_bind": false
       },
@@ -636,7 +636,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 24.14,
+        "latency_ms": 20.34,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -654,7 +654,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.47,
+        "latency_ms": 21.54,
         "top_coverage": 0.4057,
         "auto_bind": false
       },
@@ -672,7 +672,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.41,
+        "latency_ms": 20.89,
         "top_coverage": 0.5066,
         "auto_bind": false
       },
@@ -690,7 +690,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.5,
+        "latency_ms": 20.6,
         "top_coverage": 0.6375,
         "auto_bind": false
       },
@@ -712,7 +712,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.19,
+        "latency_ms": 20.42,
         "top_coverage": 0.7157,
         "auto_bind": false
       },
@@ -730,7 +730,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 22.92,
+        "latency_ms": 19.4,
         "top_coverage": 0.7286,
         "auto_bind": false
       },
@@ -748,7 +748,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.88,
+        "latency_ms": 21.52,
         "top_coverage": 0.7897,
         "auto_bind": false
       },
@@ -766,7 +766,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.32,
+        "latency_ms": 24.71,
         "top_coverage": 0.6767,
         "auto_bind": false
       },
@@ -784,7 +784,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.91,
+        "latency_ms": 25.61,
         "top_coverage": 0.6605,
         "auto_bind": false
       },
@@ -802,7 +802,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.34,
+        "latency_ms": 25.05,
         "top_coverage": 0.545,
         "auto_bind": false
       },
@@ -820,7 +820,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.94,
+        "latency_ms": 24.42,
         "top_coverage": 0.5876,
         "auto_bind": false
       },
@@ -838,7 +838,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.41,
+        "latency_ms": 22.53,
         "top_coverage": 0.7279,
         "auto_bind": false
       },
@@ -856,7 +856,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.71,
+        "latency_ms": 22.37,
         "top_coverage": 0.4932,
         "auto_bind": false
       },
@@ -874,7 +874,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.04,
+        "latency_ms": 24.22,
         "top_coverage": 0.64,
         "auto_bind": false
       },
@@ -892,7 +892,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.87,
+        "latency_ms": 20.38,
         "top_coverage": 0.7559,
         "auto_bind": false
       },
@@ -914,7 +914,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.96,
+        "latency_ms": 22.61,
         "top_coverage": 0.7055,
         "auto_bind": false
       },
@@ -934,7 +934,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.81,
+        "latency_ms": 26.36,
         "top_coverage": 0.5963,
         "auto_bind": false
       },
@@ -952,7 +952,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.57,
+        "latency_ms": 20.79,
         "top_coverage": 0.5794,
         "auto_bind": false
       },
@@ -970,7 +970,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.53,
+        "latency_ms": 24.09,
         "top_coverage": 0.5634,
         "auto_bind": false
       },
@@ -988,7 +988,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.65,
+        "latency_ms": 23.82,
         "top_coverage": 0.7793,
         "auto_bind": false
       },
@@ -1010,7 +1010,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.92,
+        "latency_ms": 23.58,
         "top_coverage": 0.6247,
         "auto_bind": false
       },
@@ -1028,7 +1028,7 @@
         ],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 26.66,
+        "latency_ms": 20.97,
         "top_coverage": 0.5143,
         "auto_bind": true
       },
@@ -1042,7 +1042,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.38,
+        "latency_ms": 20.86,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -1056,7 +1056,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.99,
+        "latency_ms": 23.3,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -1070,7 +1070,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 31.01,
+        "latency_ms": 20.97,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -1084,7 +1084,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.04,
+        "latency_ms": 20.15,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -1106,7 +1106,7 @@
         ],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 26.96,
+        "latency_ms": 22.32,
         "top_coverage": 0.4425,
         "auto_bind": false
       },
@@ -1120,7 +1120,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.98,
+        "latency_ms": 20.37,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -1142,7 +1142,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 28.36,
+        "latency_ms": 23.52,
         "top_coverage": 0.6634,
         "auto_bind": false
       },
@@ -1160,7 +1160,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.71,
+        "latency_ms": 20.4,
         "top_coverage": 0.6241,
         "auto_bind": false
       },
@@ -1178,7 +1178,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.14,
+        "latency_ms": 20.44,
         "top_coverage": 0.6327,
         "auto_bind": false
       },
@@ -1196,7 +1196,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.96,
+        "latency_ms": 24.85,
         "top_coverage": 0.5888,
         "auto_bind": false
       },
@@ -1214,7 +1214,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 27.68,
+        "latency_ms": 20.67,
         "top_coverage": 0.5318,
         "auto_bind": false
       },
@@ -1232,7 +1232,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.68,
+        "latency_ms": 24.39,
         "top_coverage": 0.5462,
         "auto_bind": false
       },
@@ -1250,7 +1250,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.19,
+        "latency_ms": 20.67,
         "top_coverage": 0.4744,
         "auto_bind": false
       },
@@ -1268,7 +1268,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.86,
+        "latency_ms": 20.57,
         "top_coverage": 0.4388,
         "auto_bind": false
       },
@@ -1286,7 +1286,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.2,
+        "latency_ms": 23.52,
         "top_coverage": 0.6768,
         "auto_bind": false
       },
@@ -1304,7 +1304,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.79,
+        "latency_ms": 20.81,
         "top_coverage": 0.4558,
         "auto_bind": false
       },
@@ -1322,7 +1322,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.7,
+        "latency_ms": 20.63,
         "top_coverage": 0.6262,
         "auto_bind": false
       },
@@ -1340,7 +1340,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.24,
+        "latency_ms": 22.7,
         "top_coverage": 0.5261,
         "auto_bind": false
       },
@@ -1354,7 +1354,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 25.09,
+        "latency_ms": 20.3,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -1368,7 +1368,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 26.0,
+        "latency_ms": 23.69,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -1386,7 +1386,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.0,
+        "latency_ms": 21.36,
         "top_coverage": 0.553,
         "auto_bind": false
       },
@@ -1404,7 +1404,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.29,
+        "latency_ms": 24.95,
         "top_coverage": 0.5457,
         "auto_bind": false
       },
@@ -1422,7 +1422,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.3,
+        "latency_ms": 20.96,
         "top_coverage": 0.4488,
         "auto_bind": false
       },
@@ -1440,7 +1440,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.03,
+        "latency_ms": 23.12,
         "top_coverage": 0.5042,
         "auto_bind": false
       },
@@ -1458,7 +1458,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.1,
+        "latency_ms": 21.42,
         "top_coverage": 0.4488,
         "auto_bind": false
       },
@@ -1476,7 +1476,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 23.35,
+        "latency_ms": 20.16,
         "top_coverage": 0.6639,
         "auto_bind": false
       },
@@ -1494,7 +1494,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.36,
+        "latency_ms": 19.4,
         "top_coverage": 0.7516,
         "auto_bind": false
       },
@@ -1512,7 +1512,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.83,
+        "latency_ms": 19.95,
         "top_coverage": 0.769,
         "auto_bind": false
       },
@@ -1530,7 +1530,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.6,
+        "latency_ms": 18.7,
         "top_coverage": 0.6872,
         "auto_bind": false
       },
@@ -1548,7 +1548,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 31.39,
+        "latency_ms": 18.73,
         "top_coverage": 0.6816,
         "auto_bind": false
       },
@@ -1566,7 +1566,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 33.91,
+        "latency_ms": 21.75,
         "top_coverage": 0.6757,
         "auto_bind": false
       },
@@ -1584,7 +1584,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 27.43,
+        "latency_ms": 20.01,
         "top_coverage": 0.6583,
         "auto_bind": false
       },
@@ -1602,7 +1602,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 29.03,
+        "latency_ms": 21.71,
         "top_coverage": 0.6816,
         "auto_bind": false
       },
@@ -1620,7 +1620,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 28.97,
+        "latency_ms": 22.17,
         "top_coverage": 0.5293,
         "auto_bind": false
       },
@@ -1638,7 +1638,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 30.78,
+        "latency_ms": 19.9,
         "top_coverage": 0.6134,
         "auto_bind": false
       },
@@ -1656,7 +1656,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 37.46,
+        "latency_ms": 22.59,
         "top_coverage": 0.6029,
         "auto_bind": false
       },
@@ -1674,7 +1674,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 28.01,
+        "latency_ms": 21.43,
         "top_coverage": 0.5466,
         "auto_bind": false
       },
@@ -1692,7 +1692,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 31.12,
+        "latency_ms": 21.68,
         "top_coverage": 0.5565,
         "auto_bind": false
       },
@@ -1710,7 +1710,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 38.48,
+        "latency_ms": 20.31,
         "top_coverage": 0.562,
         "auto_bind": false
       },
@@ -1728,7 +1728,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 38.61,
+        "latency_ms": 20.3,
         "top_coverage": 0.6053,
         "auto_bind": false
       },
@@ -1746,7 +1746,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 34.23,
+        "latency_ms": 21.7,
         "top_coverage": 0.569,
         "auto_bind": false
       },
@@ -1764,7 +1764,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 31.86,
+        "latency_ms": 21.25,
         "top_coverage": 0.6412,
         "auto_bind": false
       },
@@ -1782,7 +1782,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.74,
+        "latency_ms": 20.97,
         "top_coverage": 0.7904,
         "auto_bind": false
       },
@@ -1800,7 +1800,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 27.09,
+        "latency_ms": 22.07,
         "top_coverage": 0.6816,
         "auto_bind": false
       },
@@ -1818,7 +1818,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.92,
+        "latency_ms": 20.17,
         "top_coverage": 0.6197,
         "auto_bind": false
       },
@@ -1836,7 +1836,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.6,
+        "latency_ms": 23.71,
         "top_coverage": 0.6761,
         "auto_bind": false
       },
@@ -1854,7 +1854,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 28.65,
+        "latency_ms": 20.68,
         "top_coverage": 0.4619,
         "auto_bind": false
       },
@@ -1872,7 +1872,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.77,
+        "latency_ms": 21.19,
         "top_coverage": 0.4839,
         "auto_bind": false
       },
@@ -1890,7 +1890,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.93,
+        "latency_ms": 21.9,
         "top_coverage": 0.5057,
         "auto_bind": false
       },
@@ -1908,7 +1908,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.15,
+        "latency_ms": 20.42,
         "top_coverage": 0.7595,
         "auto_bind": false
       },
@@ -1926,7 +1926,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.55,
+        "latency_ms": 22.23,
         "top_coverage": 0.553,
         "auto_bind": false
       },
@@ -1946,7 +1946,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 25.5,
+        "latency_ms": 20.0,
         "top_coverage": 0.7877,
         "auto_bind": false
       },
@@ -1964,7 +1964,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.31,
+        "latency_ms": 19.86,
         "top_coverage": 0.6615,
         "auto_bind": false
       },
@@ -1982,7 +1982,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 26.62,
+        "latency_ms": 21.49,
         "top_coverage": 0.5206,
         "auto_bind": false
       },
@@ -1996,7 +1996,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 25.4,
+        "latency_ms": 19.92,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2016,7 +2016,7 @@
         ],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 27.62,
+        "latency_ms": 19.9,
         "top_coverage": 0.3979,
         "auto_bind": false
       },
@@ -2030,7 +2030,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.6,
+        "latency_ms": 22.26,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2052,7 +2052,7 @@
         ],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 26.97,
+        "latency_ms": 22.52,
         "top_coverage": 0.4881,
         "auto_bind": false
       },
@@ -2066,7 +2066,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.93,
+        "latency_ms": 21.89,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2080,7 +2080,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 27.52,
+        "latency_ms": 21.33,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2094,7 +2094,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 24.81,
+        "latency_ms": 20.85,
         "top_coverage": 0.0,
         "auto_bind": false
       }
@@ -2109,7 +2109,7 @@
     "mrr": 0.9667,
     "negative_false_positive_rate": 0.0833,
     "negative_auto_bind_rate": 0.0,
-    "latency_p50_ms": 7.53,
+    "latency_p50_ms": 4.99,
     "by_category": {
       "exact": {
         "n": 2,
@@ -2162,7 +2162,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 17.7,
+        "latency_ms": 11.85,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2180,7 +2180,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 11.24,
+        "latency_ms": 5.12,
         "top_coverage": 0.717,
         "auto_bind": false
       },
@@ -2198,7 +2198,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.93,
+        "latency_ms": 5.42,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2216,7 +2216,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.51,
+        "latency_ms": 5.34,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2234,7 +2234,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.47,
+        "latency_ms": 5.64,
         "top_coverage": 0.1975,
         "auto_bind": false
       },
@@ -2254,7 +2254,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.33,
+        "latency_ms": 5.65,
         "top_coverage": 0.4005,
         "auto_bind": false
       },
@@ -2272,7 +2272,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.01,
+        "latency_ms": 5.44,
         "top_coverage": 0.4747,
         "auto_bind": false
       },
@@ -2290,7 +2290,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 9.52,
+        "latency_ms": 5.38,
         "top_coverage": 0.6178,
         "auto_bind": false
       },
@@ -2308,7 +2308,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 102.25,
+        "latency_ms": 10.36,
         "top_coverage": 0.8517,
         "auto_bind": false
       },
@@ -2326,7 +2326,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 12.78,
+        "latency_ms": 7.88,
         "top_coverage": 0.7628,
         "auto_bind": false
       },
@@ -2344,7 +2344,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.55,
+        "latency_ms": 5.56,
         "top_coverage": 0.2967,
         "auto_bind": false
       },
@@ -2362,7 +2362,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.28,
+        "latency_ms": 6.49,
         "top_coverage": 0.2523,
         "auto_bind": false
       },
@@ -2380,7 +2380,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.7,
+        "latency_ms": 5.69,
         "top_coverage": 0.3599,
         "auto_bind": false
       },
@@ -2398,7 +2398,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.25,
+        "latency_ms": 6.53,
         "top_coverage": 0.1869,
         "auto_bind": false
       },
@@ -2416,7 +2416,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.77,
+        "latency_ms": 6.88,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2434,7 +2434,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.16,
+        "latency_ms": 6.87,
         "top_coverage": 0.6281,
         "auto_bind": false
       },
@@ -2452,7 +2452,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.39,
+        "latency_ms": 4.84,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2470,7 +2470,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.49,
+        "latency_ms": 4.96,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2488,7 +2488,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.22,
+        "latency_ms": 4.88,
         "top_coverage": 0.717,
         "auto_bind": false
       },
@@ -2502,7 +2502,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 8.26,
+        "latency_ms": 4.85,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2520,7 +2520,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.45,
+        "latency_ms": 5.16,
         "top_coverage": 0.4396,
         "auto_bind": false
       },
@@ -2538,7 +2538,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.63,
+        "latency_ms": 4.84,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2556,7 +2556,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.73,
+        "latency_ms": 6.24,
         "top_coverage": 0.7039,
         "auto_bind": false
       },
@@ -2574,7 +2574,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.56,
+        "latency_ms": 4.97,
         "top_coverage": 0.6731,
         "auto_bind": false
       },
@@ -2592,7 +2592,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.96,
+        "latency_ms": 5.26,
         "top_coverage": 0.6993,
         "auto_bind": false
       },
@@ -2610,7 +2610,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.73,
+        "latency_ms": 4.99,
         "top_coverage": 0.6439,
         "auto_bind": false
       },
@@ -2628,7 +2628,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 10.72,
+        "latency_ms": 6.76,
         "top_coverage": 0.717,
         "auto_bind": false
       },
@@ -2646,7 +2646,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.11,
+        "latency_ms": 5.09,
         "top_coverage": 0.6825,
         "auto_bind": false
       },
@@ -2664,7 +2664,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.13,
+        "latency_ms": 5.95,
         "top_coverage": 0.711,
         "auto_bind": false
       },
@@ -2682,7 +2682,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 9.81,
+        "latency_ms": 6.32,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2700,7 +2700,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.46,
+        "latency_ms": 4.72,
         "top_coverage": 0.6281,
         "auto_bind": false
       },
@@ -2718,7 +2718,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 11.64,
+        "latency_ms": 4.52,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2736,7 +2736,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 10.64,
+        "latency_ms": 4.99,
         "top_coverage": 0.6281,
         "auto_bind": false
       },
@@ -2754,7 +2754,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.35,
+        "latency_ms": 5.46,
         "top_coverage": 0.7716,
         "auto_bind": false
       },
@@ -2772,7 +2772,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.14,
+        "latency_ms": 6.32,
         "top_coverage": 0.6724,
         "auto_bind": false
       },
@@ -2792,7 +2792,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.07,
+        "latency_ms": 6.52,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2810,7 +2810,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.34,
+        "latency_ms": 4.66,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2828,7 +2828,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.12,
+        "latency_ms": 4.46,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2846,7 +2846,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.78,
+        "latency_ms": 4.99,
         "top_coverage": 0.717,
         "auto_bind": false
       },
@@ -2864,7 +2864,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 9.3,
+        "latency_ms": 4.56,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -2882,7 +2882,7 @@
         ],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 9.62,
+        "latency_ms": 4.72,
         "top_coverage": 0.2357,
         "auto_bind": false
       },
@@ -2896,7 +2896,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 11.63,
+        "latency_ms": 4.77,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2910,7 +2910,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.42,
+        "latency_ms": 5.17,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2924,7 +2924,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.09,
+        "latency_ms": 4.72,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2938,7 +2938,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 9.12,
+        "latency_ms": 4.97,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2952,7 +2952,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.62,
+        "latency_ms": 5.11,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2966,7 +2966,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.42,
+        "latency_ms": 6.62,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -2984,7 +2984,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.84,
+        "latency_ms": 6.77,
         "top_coverage": 0.2916,
         "auto_bind": false
       },
@@ -3002,7 +3002,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.22,
+        "latency_ms": 4.98,
         "top_coverage": 0.3296,
         "auto_bind": false
       },
@@ -3020,7 +3020,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.1,
+        "latency_ms": 4.97,
         "top_coverage": 0.3918,
         "auto_bind": false
       },
@@ -3038,7 +3038,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.07,
+        "latency_ms": 5.39,
         "top_coverage": 0.1937,
         "auto_bind": false
       },
@@ -3056,7 +3056,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.13,
+        "latency_ms": 4.88,
         "top_coverage": 0.3524,
         "auto_bind": false
       },
@@ -3074,7 +3074,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.7,
+        "latency_ms": 4.77,
         "top_coverage": 0.3841,
         "auto_bind": false
       },
@@ -3092,7 +3092,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.25,
+        "latency_ms": 4.83,
         "top_coverage": 0.5294,
         "auto_bind": false
       },
@@ -3110,7 +3110,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.38,
+        "latency_ms": 4.76,
         "top_coverage": 0.4576,
         "auto_bind": false
       },
@@ -3128,7 +3128,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.16,
+        "latency_ms": 4.89,
         "top_coverage": 0.4576,
         "auto_bind": false
       },
@@ -3146,7 +3146,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.62,
+        "latency_ms": 9.51,
         "top_coverage": 0.2967,
         "auto_bind": false
       },
@@ -3166,7 +3166,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.62,
+        "latency_ms": 5.19,
         "top_coverage": 0.8366,
         "auto_bind": false
       },
@@ -3186,7 +3186,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.59,
+        "latency_ms": 7.32,
         "top_coverage": 0.8246,
         "auto_bind": false
       },
@@ -3204,7 +3204,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.56,
+        "latency_ms": 4.87,
         "top_coverage": 0.7963,
         "auto_bind": false
       },
@@ -3224,7 +3224,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.54,
+        "latency_ms": 4.8,
         "top_coverage": 0.7987,
         "auto_bind": false
       },
@@ -3242,7 +3242,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.99,
+        "latency_ms": 5.09,
         "top_coverage": 0.8087,
         "auto_bind": false
       },
@@ -3260,7 +3260,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.97,
+        "latency_ms": 4.85,
         "top_coverage": 0.8231,
         "auto_bind": false
       },
@@ -3278,7 +3278,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.66,
+        "latency_ms": 4.74,
         "top_coverage": 0.7334,
         "auto_bind": false
       },
@@ -3298,7 +3298,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.0,
+        "latency_ms": 4.83,
         "top_coverage": 0.8564,
         "auto_bind": false
       },
@@ -3316,7 +3316,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.0,
+        "latency_ms": 4.75,
         "top_coverage": 0.717,
         "auto_bind": false
       },
@@ -3334,7 +3334,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.58,
+        "latency_ms": 4.57,
         "top_coverage": 0.6825,
         "auto_bind": false
       },
@@ -3352,7 +3352,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 10.66,
+        "latency_ms": 4.93,
         "top_coverage": 0.7716,
         "auto_bind": false
       },
@@ -3370,7 +3370,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.26,
+        "latency_ms": 7.58,
         "top_coverage": 0.707,
         "auto_bind": false
       },
@@ -3388,7 +3388,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.53,
+        "latency_ms": 5.21,
         "top_coverage": 0.6825,
         "auto_bind": false
       },
@@ -3406,7 +3406,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.9,
+        "latency_ms": 7.32,
         "top_coverage": 0.717,
         "auto_bind": false
       },
@@ -3424,7 +3424,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.26,
+        "latency_ms": 38.68,
         "top_coverage": 0.717,
         "auto_bind": false
       },
@@ -3442,7 +3442,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.46,
+        "latency_ms": 6.21,
         "top_coverage": 0.6825,
         "auto_bind": false
       },
@@ -3460,7 +3460,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 10.87,
+        "latency_ms": 5.38,
         "top_coverage": 0.6825,
         "auto_bind": false
       },
@@ -3478,7 +3478,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 10.15,
+        "latency_ms": 4.68,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3496,7 +3496,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.72,
+        "latency_ms": 4.69,
         "top_coverage": 0.693,
         "auto_bind": false
       },
@@ -3514,7 +3514,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.25,
+        "latency_ms": 4.67,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3532,7 +3532,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.59,
+        "latency_ms": 4.89,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3550,7 +3550,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.62,
+        "latency_ms": 4.97,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3568,7 +3568,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 9.46,
+        "latency_ms": 4.68,
         "top_coverage": 0.6825,
         "auto_bind": false
       },
@@ -3586,7 +3586,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 10.76,
+        "latency_ms": 4.48,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3604,7 +3604,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 9.82,
+        "latency_ms": 4.67,
         "top_coverage": 0.6825,
         "auto_bind": false
       },
@@ -3622,7 +3622,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 9.05,
+        "latency_ms": 7.54,
         "top_coverage": 0.7039,
         "auto_bind": false
       },
@@ -3640,7 +3640,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.31,
+        "latency_ms": 4.57,
         "top_coverage": 0.6281,
         "auto_bind": false
       },
@@ -3658,7 +3658,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.26,
+        "latency_ms": 5.0,
         "top_coverage": 0.6825,
         "auto_bind": false
       },
@@ -3676,7 +3676,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.27,
+        "latency_ms": 4.61,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3694,7 +3694,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.12,
+        "latency_ms": 4.49,
         "top_coverage": 0.6281,
         "auto_bind": false
       },
@@ -3712,7 +3712,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.12,
+        "latency_ms": 4.4,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3730,7 +3730,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 9.72,
+        "latency_ms": 4.93,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3748,7 +3748,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.73,
+        "latency_ms": 4.64,
         "top_coverage": 0.717,
         "auto_bind": false
       },
@@ -3766,7 +3766,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.47,
+        "latency_ms": 4.6,
         "top_coverage": 0.7496,
         "auto_bind": false
       },
@@ -3786,7 +3786,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.5,
+        "latency_ms": 5.13,
         "top_coverage": 0.2047,
         "auto_bind": false
       },
@@ -3804,7 +3804,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 11.09,
+        "latency_ms": 4.61,
         "top_coverage": 0.8194,
         "auto_bind": false
       },
@@ -3822,7 +3822,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 10.77,
+        "latency_ms": 4.57,
         "top_coverage": 0.587,
         "auto_bind": false
       },
@@ -3840,7 +3840,7 @@
         ],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 6.85,
+        "latency_ms": 7.67,
         "top_coverage": 1.0,
         "auto_bind": false
       },
@@ -3854,7 +3854,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 7.59,
+        "latency_ms": 5.91,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -3868,7 +3868,7 @@
         "scores": [],
         "pass": false,
         "hit_at_3": false,
-        "latency_ms": 7.02,
+        "latency_ms": 5.43,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -3882,7 +3882,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 8.56,
+        "latency_ms": 5.21,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -3896,7 +3896,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.9,
+        "latency_ms": 4.93,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -3910,7 +3910,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 39.54,
+        "latency_ms": 5.1,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -3924,7 +3924,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.79,
+        "latency_ms": 5.06,
         "top_coverage": 0.0,
         "auto_bind": false
       },
@@ -3938,7 +3938,7 @@
         "scores": [],
         "pass": true,
         "hit_at_3": true,
-        "latency_ms": 7.71,
+        "latency_ms": 4.73,
         "top_coverage": 0.0,
         "auto_bind": false
       }

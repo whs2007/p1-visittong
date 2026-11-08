@@ -9,6 +9,7 @@ from typing import Any, Iterable
 from app.adapters import crm
 from app.domain.db import Database
 from app.skills.visit_skills import SKILLS
+from app.utils import business_today, business_tz
 
 WEEKDAYS = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6, "天": 6}
 
@@ -23,7 +24,8 @@ class RouteResult:
 
 
 def _next_weekday(target: int, next_week: bool) -> date:
-    today = date.today()
+    # 相对日期以业务时区起算：UTC 机器在 0~8 点之间 date.today() 会慢一天
+    today = business_today()
     delta = (target - today.weekday()) % 7
     if delta == 0:
         delta = 7
@@ -35,20 +37,21 @@ def _next_weekday(target: int, next_week: bool) -> date:
 
 def parse_time(text: str) -> str | None:
     """解析中文时间：今天/明天/下周三 + 上午/下午/具体小时。返回 ISO 字符串。"""
+    today = business_today()
     m = re.search(r"(下{1,2})?(周|星期)([一二三四五六日天])", text)
     day: date | None = None
     if m:
         day = _next_weekday(WEEKDAYS[m.group(3)], bool(m.group(1)))
     elif "明天" in text:
-        day = date.today() + timedelta(days=1)
+        day = today + timedelta(days=1)
     elif "后天" in text:
-        day = date.today() + timedelta(days=2)
+        day = today + timedelta(days=2)
     elif "今天" in text:
-        day = date.today()
+        day = today
     else:
         m2 = re.search(r"(\d{1,2})月(\d{1,2})[日号]", text)
         if m2:
-            day = date(date.today().year, int(m2.group(1)), int(m2.group(2)))
+            day = date(today.year, int(m2.group(1)), int(m2.group(2)))
 
     hour: int | None = None
     hm = re.search(r"(\d{1,2})\s*[:：点]\s*(\d{1,2})?", text)
@@ -77,7 +80,8 @@ def parse_time(text: str) -> str | None:
     # 下午 1~6 点按 24 小时制修正
     if hour < 12 and ("下午" in text or "晚上" in text):
         hour += 12
-    return datetime.combine(day, time(hour, minute)).astimezone().isoformat(timespec="seconds")
+    # 业务时间挂业务时区，不挂部署机本地时区（CI 的 UTC 曾把 +08:00 写成 +00:00）
+    return datetime.combine(day, time(hour, minute), tzinfo=business_tz()).isoformat(timespec="seconds")
 
 
 def route_text(db: Database, text: str) -> RouteResult:

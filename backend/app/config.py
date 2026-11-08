@@ -108,6 +108,12 @@ class Settings(BaseSettings):
     # 自动绑定（唯一命中直接当成客户）额外要求覆盖率过半，
     # 只匹配到城市/商圈这种低信息量片段时只给候选卡，不自动绑定
     knowledge_autobind_coverage: float = 0.5
+    # ---------- 时区语义 ----------
+    # 业务时区：拜访计划/待办的时间跟业务走，不跟部署机走。
+    # 踩过的坑：开发机 +08:00、CI 的 Ubuntu 是 UTC，同一个 naive datetime
+    # 经 .astimezone() 在两边写出两种 planned_at，同一个测试一边绿一边红。
+    business_tz: str = "Asia/Shanghai"
+
     seed_demo: bool = True
     distance_ok_m: int = 500         # 范围内直接签到
     distance_approval_m: int = 2000  # 区间内走审批，超过直接拒绝

@@ -6,6 +6,7 @@ pydantic-settings>=2.3,<3.0
 python-dotenv>=1.0,<2.0
 redis>=5.0,<9.0
 python-multipart>=0.0.20,<1.0    # routes_audio 用 Form/UploadFile；fastapi 导入路由时就要求它
+tzdata>=2024.1                   # zoneinfo 的业务时区数据；Windows 没有系统 tz 库，必须显式带上
 
 # dev
 pytest>=8.0,<10.0

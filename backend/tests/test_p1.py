@@ -264,6 +264,25 @@ def test_slots_extraction(tmp_path):
     assert slots["planned_at"].endswith("10:00:00+08:00")
 
 
+def test_parse_time_business_tz():
+    """业务时间挂业务时区（默认 Asia/Shanghai），不随部署机漂移。
+
+    这个用例是 CI 教出来的：本地 Windows 是 +08:00 全绿，CI 的 Ubuntu 是
+    UTC，`.astimezone()` 把 planned_at 写成 +00:00，184 条里恰好这条红。
+    修法是把「业务时区」变成显式配置（business_tz），测试同时钉住：
+    相对日期（明天/下周三）必须以业务时区的「今天」起算。
+    """
+    dt = datetime.fromisoformat(parse_time("明天上午"))
+    assert dt.utcoffset().total_seconds() == 8 * 3600
+    assert dt.hour == 10
+
+    dt2 = datetime.fromisoformat(parse_time("下周三下午 3 点"))
+    assert dt2.utcoffset().total_seconds() == 8 * 3600
+    assert dt2.hour == 15
+    # 下周三必须真的晚于「业务时区的今天」（而不是 UTC 的今天推出来的）
+    assert dt2.date() > datetime.now(dt.tzinfo).date()
+
+
 # --------------------------------------------------------------------------- #
 # 会话树
 # --------------------------------------------------------------------------- #

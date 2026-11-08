@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import Any
 
 from app.skills.visit_skills import SKILLS, SkillSpec
+from app.utils import business_tz
 
 PREAMBLE = """你是「拜访通」销售助手，帮助 BD 完成拜访计划、到店签到与拜访日志。
 硬规则：
@@ -55,7 +56,8 @@ def build_system_prompt(
     """
     skills = skills or SKILLS
     slots = slots or {}
-    now = now or datetime.now().astimezone()
+    # 告诉模型「现在几点」也用业务时区：UTC 机器上不能给用户报错时间
+    now = now or datetime.now(business_tz())
 
     lines: list[str] = [preamble or PREAMBLE, "", "# 技能索引（单轮只激活一个）"]
     for spec in skills.values():

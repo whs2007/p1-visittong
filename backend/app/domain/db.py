@@ -5,12 +5,12 @@ MVP 采用"每请求新连接 + 短事务"，单机演示足够；生产替换 M
 from __future__ import annotations
 
 import sqlite3
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
 from app.auth import hash_password
-from app.utils import new_id, now_iso
+from app.utils import business_today, business_tz, new_id, now_iso
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -343,11 +343,12 @@ PLAN_FIELDS = ("planned_at", "store_id", "topic", "duration_min")
 
 
 def today_str() -> str:
-    return date.today().isoformat()
+    return business_today().isoformat()
 
 
 def today_at(hour: int, minute: int = 0) -> str:
-    return datetime.combine(date.today(), time(hour, minute)).astimezone().isoformat(timespec="seconds")
+    # 同 router.parse_time：业务时间挂业务时区，不跟部署机本地时区走
+    return datetime.combine(business_today(), time(hour, minute), tzinfo=business_tz()).isoformat(timespec="seconds")
 
 
 class Database:

@@ -3,7 +3,7 @@
     "stale_skip": 295,
     "writes": 105,
     "lock_errors": 0,
-    "elapsed_ms": 1352.3,
+    "elapsed_ms": 656.5,
     "docs": 40,
     "stale_overwrites": 0,
     "content_mismatch": 0,
@@ -13,16 +13,16 @@
     ]
   },
   "naive_8t": {
-    "stale_skip": 261,
-    "writes": 139,
+    "stale_skip": 278,
+    "writes": 122,
     "lock_errors": 0,
-    "elapsed_ms": 1054.6,
+    "elapsed_ms": 327.0,
     "docs": 40,
     "stale_overwrites": 5,
     "content_mismatch": 5,
     "rounds": 3,
     "stale_runs": [
-      0,
+      5,
       4,
       5
     ]
@@ -31,7 +31,7 @@
     "stale_skip": 295,
     "writes": 105,
     "lock_errors": 0,
-    "elapsed_ms": 2545.0,
+    "elapsed_ms": 1636.6,
     "docs": 40,
     "stale_overwrites": 0,
     "content_mismatch": 0,
@@ -41,10 +41,10 @@
     ]
   },
   "guarded_8t": {
-    "stale_skip": 288,
-    "writes": 112,
+    "stale_skip": 284,
+    "writes": 116,
     "lock_errors": 0,
-    "elapsed_ms": 1524.1,
+    "elapsed_ms": 473.0,
     "docs": 40,
     "stale_overwrites": 0,
     "content_mismatch": 0,
