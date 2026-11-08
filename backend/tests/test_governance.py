@@ -151,9 +151,15 @@ def test_manual_plan_endpoints_fsm_and_audit(client, manager_client) -> None:
     assert updated.status_code == 200, updated.text
     assert updated.json()["plan"]["topic"] == "手工改主题"
 
-    cancelled = client.post(f"/api/plans/{plan_id}/cancel")
+    # 人工降级通道是显式豁免：销售不能自助取消（否则等于绕过业绩监督）
+    denied = client.post(f"/api/plans/{plan_id}/cancel")
+    assert denied.status_code == 403
+    assert denied.json()["code"] == "MANAGER_ONLY"
+
+    cancelled = manager_client.post(f"/api/plans/{plan_id}/cancel")
     assert cancelled.status_code == 200, cancelled.text
     assert cancelled.json()["plan"]["status"] == "cancelled"
+    assert cancelled.json()["governance"]["approval"] == "waived"
 
     # 终态不可再改
     again = client.patch(f"/api/plans/{plan_id}", json={"topic": "x"})
@@ -165,3 +171,24 @@ def test_manual_plan_endpoints_fsm_and_audit(client, manager_client) -> None:
     assert "plan.create.manual" in actions
     assert "plan.update.manual" in actions
     assert "plan.cancel.manual" in actions
+
+    # 豁免标记真的写进审计，不是只在响应里回显
+    assert any(
+        row["action"] == "plan.cancel.manual"
+        and "manual_override" in (row.get("after") or "")
+        and "explicit_human_action_by_manager" in (row.get("after") or "")
+        for row in audit
+    )
+
+    # 台账本身也是主管专属：销售不该读到「谁被豁免过」
+    ledger_denied = client.get("/api/governance/manual-overrides")
+    assert ledger_denied.status_code == 403
+    assert ledger_denied.json()["code"] == "MANAGER_ONLY"
+
+    # 豁免必须进台账：可举证、可统计，而不是只在文档里声明
+    ledger = manager_client.get("/api/governance/manual-overrides")
+    assert ledger.status_code == 200
+    body = ledger.json()
+    assert body["count"] >= 1
+    assert any(row["target_id"] == plan_id for row in body["items"])
+    assert body["items"][0]["waiver_reason"] == "explicit_human_action_by_manager"

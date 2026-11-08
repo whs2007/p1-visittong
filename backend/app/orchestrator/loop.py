@@ -29,6 +29,7 @@ from app.domain.tasks import TaskStore
 from app.llm.base import BaseLLM
 from app.orchestrator.router import RouteResult, build_slots, route_card, route_text_hybrid
 from app.policy.engine import PolicyEngine
+from app.runtime import AgentSession, default_session
 from app.sessions.store import SessionState
 from app.sessions.tree import SessionTree
 from app.skills.registry import ToolRegistry, ToolResult
@@ -60,6 +61,7 @@ class Orchestrator:
         approvals: ApprovalManager,
         tasks: TaskStore,
         knowledge: Any = None,
+        session: AgentSession | None = None,
     ) -> None:
         self.settings = settings
         self.db = db
@@ -71,12 +73,91 @@ class Orchestrator:
         self.traces = traces
         self.approvals = approvals
         self.tasks = tasks
+        self.session = session or default_session(registry)
         self.session_fsm = SessionFSM(db, state)
         self.pipeline = ToolPipeline(
             settings=settings, registry=registry, policy=policy,
             approvals=approvals, traces=traces, db=db, tree=tree, state=state,
-            knowledge=knowledge,
+            knowledge=knowledge, tool_guard=self._guard_tool,
         )
+
+    def _guard_tool(self, tool_name: str, active_skill: str) -> str | None:
+        """执行期能力边界：模型吐出装配白名单外的工具名也不会被执行。
+
+        绑定方法在调用时才读 self.session，因此 /api/agents/reload 热更新后
+        无需重建 ToolPipeline 即生效。这里只裁 Agent 级白名单；工具与当前技能
+        的归属、角色权限、风险等级仍分别由工具 schema 与 PolicyEngine 负责。
+        """
+        if not self.session.allows_tool(tool_name):
+            return (
+                f"CAPABILITY_DENIED: 工具 {tool_name} 不在 Agent "
+                f"{self.session.name} 的能力白名单内"
+            )
+        if not self.session.allows_skill(active_skill):
+            return f"CAPABILITY_DENIED: 技能 {active_skill} 未授权给 Agent {self.session.name}"
+        return None
+
+    def replay_decision(self, tool_name: str, skill: str, has_saved: bool) -> tuple[str, str | None]:
+        """幂等回放是否允许消费旧结果。
+
+        抽成可单测的判定，是为了让「回放也过能力边界」不是一句口头声明。
+        生效场景（写清楚避免过度宣称）：legacy 检查点被兼容放行、同一个
+        turn_id 被重放、或 Turn 执行中途发生 Agent 热更新。跨能力集的正常
+        resume 已由 check_resume_compat 提前拒绝，走不到这里。
+        """
+        if not has_saved:
+            return ("execute", None)
+        reason = self._guard_tool(tool_name, skill)
+        return ("deny", reason) if reason else ("replay", None)
+
+    def _checkpoint_capability(self) -> dict[str, Any]:
+        """每次写检查点都带上本次装配的能力快照。"""
+        return {
+            "agent_name": self.session.name,
+            "capability_fingerprint": self.session.capability_fingerprint(),
+            "capability": self.session.capability(),
+        }
+
+    def check_resume_compat(self, checkpoint: dict[str, Any]) -> dict[str, Any]:
+        """检查检查点绑定的能力集与当前装配是否一致。
+
+        三种结果：
+        - `ok`：一致，正常续跑；
+        - `legacy`：v0.5 之前的检查点没有指纹，兼容放行但写 trace 留痕；
+        - `incompatible`：能力集已变，**拒绝续跑**。
+
+        为什么拒绝而不是「用新能力继续」：checkpoint.messages 里含旧系统提示词
+        与旧工具结果，用新权限跑旧上下文等于静默权限提升；也不该自动把旧
+        检查点升级到新能力。正确做法是显式失败，让人决定：恢复原配置后
+        resume，或以当前 Agent 重新发起任务。
+        """
+        recorded = checkpoint.get("capability_fingerprint")
+        current = self.session.capability_fingerprint()
+        base = {
+            "recorded_agent": checkpoint.get("agent_name"),
+            "recorded_fingerprint": recorded,
+            "current_agent": self.session.name,
+            "current_fingerprint": current,
+        }
+        if not recorded:
+            return {**base, "status": "legacy", "reason": "检查点无能力指纹（v0.5 之前），按兼容模式续跑并留痕"}
+        if recorded == current:
+            return {**base, "status": "ok", "reason": "能力集一致"}
+        return {
+            **base,
+            "status": "incompatible",
+            "reason": (
+                f"检查点由 Agent {checkpoint.get('agent_name')}（{str(recorded)[:12]}…）创建，"
+                f"当前装配为 {self.session.name}（{current[:12]}…）。"
+                "能力集已变更，拒绝跨能力集续跑；请恢复原配置后重试，或以当前 Agent 重新发起。"
+            ),
+            "recorded_capability": checkpoint.get("capability") or {},
+            "current_capability": self.session.capability(),
+        }
+
+    def set_session(self, session: AgentSession) -> None:
+        """热更新能力视图（ResourceLoader.reload 之后由装配层调用）。"""
+        self.session = session
 
     # ------------------------------------------------------------------ #
     # 上下文：压缩 + 提示词组装（Pi：transformContext + sections）
@@ -103,7 +184,7 @@ class Orchestrator:
                 },
             )
         entity = await self.state.entity(session_id)
-        system = build_system_prompt(active_skill=skill, slots=slots, entity=entity)
+        system = self.session.system_prompt(active_skill=skill, slots=slots, entity=entity)
         messages = [{"role": "system", "content": system}] + self.tree.messages(
             session_id, self.settings.context_limit
         )
@@ -153,6 +234,24 @@ class Orchestrator:
             await self.traces.add_event(trace_id, "turn_start", name="任务开始", payload={"text": user_text})
 
             if resume:
+                compat = self.check_resume_compat(resume)
+                if compat["status"] == "incompatible":
+                    # 防御性分支：HTTP 入口已提前返回 409；这里保证任何直接调用者
+                    # 也不会静默用新权限跑旧上下文。任务保持 interrupted，
+                    # 恢复原装配后可再次 resume，不需要重放历史。
+                    await self.traces.add_event(
+                        trace_id, "capability_mismatch", name="resume_rejected",
+                        status="error", payload=compat,
+                    )
+                    self.tasks.update(turn_id, status="interrupted", error="AGENT_CAPABILITY_CHANGED")
+                    yield emit("error", message=compat["reason"], code="AGENT_CAPABILITY_CHANGED")
+                    finished = True
+                    return
+                if compat["status"] == "legacy":
+                    await self.traces.add_event(
+                        trace_id, "capability_legacy_checkpoint", name="legacy_checkpoint",
+                        payload=compat,
+                    )
                 # 断点续跑：不重新路由、不重写用户消息，直接从未完成的 ReAct 上下文继续
                 self.tasks.update(
                     turn_id, status="running", trace_id=trace_id,
@@ -184,27 +283,40 @@ class Orchestrator:
                 # 2) 路由
                 yield emit("status", phase="route", text="正在识别意图")
                 if card:
-                    route = route_card(self.db, card.get("card_name", ""), card.get("action_id", ""), card.get("skill_name", ""), card.get("payload") or {})
+                    route = route_card(
+                        self.db, card.get("card_name", ""), card.get("action_id", ""),
+                        card.get("skill_name", ""), card.get("payload") or {},
+                        allowed=self.session.skill_names(),
+                    )
                 else:
-                    route = await route_text_hybrid(self.db, user_text, self.llm, self.settings)
+                    route = await route_text_hybrid(
+                        self.db, user_text, self.llm, self.settings,
+                        labels=list(self.session.skill_names()),
+                    )
                     route.slots.update(build_slots(self.db, user_text))
-                skill = route.skill
+                routed_skill = route.skill
+                skill = self.session.resolve_route(routed_skill)
+                if skill != routed_skill:
+                    await self.traces.add_event(
+                        trace_id, "capability_denied", name=routed_skill,
+                        payload={"agent": self.session.name, "requested": routed_skill, "fallback": skill},
+                    )
 
                 # 2.1) 槽位补充轮：用户只补信息（没命中任何 Skill）时沿用上轮子 Skill
                 pending_slots = await self.state.slots(session_id)
                 meta = await self.state.meta(session_id) or {}
                 last_skill = meta.get("last_skill")
-                if not card and skill == "chat" and last_skill in SKILLS and pending_slots:
+                if not card and skill == "chat" and last_skill in self.session.skills and pending_slots:
                     route = RouteResult(last_skill, 0.6, "context", route.slots, "pending_slots")
                     skill = route.skill
                 await self.state.update(session_id, last_skill=skill)
                 await self._fsm(session_id=session_id, event="route", user_id=user_id, trace_id=trace_id)
-                yield emit("route", skill=skill, confidence=route.confidence, source=route.source, label=SKILLS.get(skill, None).label if skill in SKILLS else "通用对话")
+                yield emit("route", skill=skill, confidence=route.confidence, source=route.source, label=self.session.label_of(skill))
                 await self.traces.add_event(
                     trace_id, "route", name=route.source,
                     payload={"skill": skill, "confidence": route.confidence, "source": route.source},
                 )
-                if skill in SKILLS:
+                if skill in self.session.skills:
                     await self.traces.set_trace_skill(trace_id, skill)
                     await self.traces.add_event(trace_id, "skill_select", name=skill, payload={"skill": skill})
 
@@ -226,9 +338,10 @@ class Orchestrator:
                 # 初始检查点：进程在此后任一时刻崩溃都能从上下文恢复
                 self.tasks.save_checkpoint(
                     turn_id=turn_id, step=0, skill=skill, messages=messages, slots=slots,
+                    **self._checkpoint_capability(),
                 )
 
-            tool_names = [t.name for t in self.registry.for_skill(skill)] if skill in SKILLS else []
+            tool_names = [t.name for t in self.session.tools_for(skill)] if skill in self.session.skills else []
             tools = self.registry.openai_tools(tool_names)
 
             # 5) ReAct 循环（Pi：while(true) + 显式收敛条件）
@@ -287,6 +400,34 @@ class Orchestrator:
                     )
                     # 幂等：同一 (turn_id, step, call_id) 已执行过则回放结果，不重复产生副作用
                     saved = self.tasks.saved_tool(turn_id, step, call["id"])
+                    # 回放也要过能力边界。回放本身不执行 handler，但会把旧结果
+                    # 喂给模型；能力集收紧后，让模型以为越权工具曾执行成功是
+                    # 错误行为。此处显式 deny + 留痕，且**不改写** tool_executions
+                    # 里的历史记录（那是已发生的事实，篡改会破坏幂等账本）。
+                    replay_action, replay_guard = self.replay_decision(name, skill, saved is not None)
+                    if replay_action == "deny":
+                        result = ToolResult("denied", replay_guard)
+                        yield emit(
+                            "tool_result", call_id=call["id"], name=name,
+                            status="denied", output=result.output, latency_ms=0,
+                        )
+                        await self.traces.add_event(
+                            trace_id, "capability_denied", name=name,
+                            payload={"call_id": call["id"], "skill": skill,
+                                     "reason": replay_guard, "replay_blocked": True},
+                        )
+                        self.db.add_audit(
+                            actor=user_id, action=f"tool.{name}.denied",
+                            target_type="tool", target_id=call["id"],
+                            before={"args": args},
+                            after={"status": "denied", "decision": "capability_guard",
+                                   "replay_blocked": True},
+                        )
+                        self.tree.append(
+                            session_id=session_id, parent_id=assistant_entry["entry_id"], role="tool",
+                            content=_tool_message(result), tool_call_id=call["id"], name=name,
+                        )
+                        continue
                     if saved:
                         result = ToolResult(
                             saved["status"], saved["output"] or "", json.loads(saved.get("data") or "{}"),
@@ -335,6 +476,7 @@ class Orchestrator:
                     turn_id=turn_id, step=step + 1, skill=skill,
                     messages=messages, slots=slots,
                     tool_calls=tool_calls_count, tokens_in=tokens_in, tokens_out=tokens_out,
+                    **self._checkpoint_capability(),
                 )
             else:
                 stop_reason = "max_steps"

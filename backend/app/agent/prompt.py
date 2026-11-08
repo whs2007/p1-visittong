@@ -42,23 +42,34 @@ def build_system_prompt(
     entity: dict[str, Any] | None = None,
     skills: dict[str, SkillSpec] | None = None,
     now: datetime | None = None,
+    preamble: str | None = None,
+    tool_names: list[str] | None = None,
+    skill_body: str | None = None,
 ) -> str:
+    """组装 system prompt。
+
+    AgentSession 传入裁剪后的能力视图：preamble 可覆写角色段、tool_names 是
+    真实暴露给模型的工具清单、skill_body 是按 skill:// 路径按需读取的正文。
+    三个参数缺省时行为与 v0.4 完全一致（供未装配的调用方与旧测试使用）。
+    """
     skills = skills or SKILLS
     slots = slots or {}
     now = now or datetime.now().astimezone()
 
-    lines: list[str] = [PREAMBLE, "", "# 技能索引（单轮只激活一个）"]
+    lines: list[str] = [preamble or PREAMBLE, "", "# 技能索引（单轮只激活一个）"]
     for spec in skills.values():
         mark = " ← 当前" if spec.name == active_skill else ""
         lines.append(f"- {spec.name}（{skill_path(spec.name)}）：{spec.description}{mark}")
 
     spec = skills.get(active_skill)
     if spec is not None:
+        body = skill_body if skill_body is not None else spec.prompt.strip()
+        visible = tool_names if tool_names is not None else list(spec.tools or [])
         lines += [
             "",
             f"# 当前技能：{spec.label}（{spec.name}）",
-            spec.prompt.strip(),
-            f"可用工具：{', '.join(spec.tools) if spec.tools else '无（纯对话）'}",
+            body,
+            f"可用工具：{', '.join(visible) if visible else '无（纯对话）'}",
         ]
 
     hint = json.dumps({k: v for k, v in slots.items() if k in SLOT_KEYS}, ensure_ascii=False)

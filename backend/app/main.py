@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,7 +11,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.adapters.knowledge import build_knowledge, sync_knowledge
-from app.api import routes_audio, routes_auth, routes_chat, routes_knowledge, routes_obs, routes_visit
+from app.api import (
+    routes_agents, routes_audio, routes_auth, routes_chat,
+    routes_knowledge, routes_obs, routes_visit,
+)
 from app.approvals import ApprovalManager
 from app.config import FRONTEND_DIR, Settings, get_settings
 from app.context import AppContext
@@ -23,6 +27,7 @@ from app.llm import build_llm
 from app.policy.engine import PolicyEngine
 from app.sessions.store import SessionState
 from app.sessions.tree import SessionTree, ensure_columns
+from app.runtime import ResourceLoader
 from app.skills.registry import registry
 from app.trace.seed import seed_traces
 from app.trace.store import TraceStore
@@ -76,6 +81,16 @@ async def lifespan(application: FastAPI):
 
     import app.skills.tools as _builtin_tools  # noqa: F401  注册内置工具
 
+    # 显式装配（对齐 Pi createAgentSession）：能力集由配置决定，而非模块级全局字典
+    resource_loader = ResourceLoader(registry)
+    agent_name = os.getenv("AGENT_NAME", "visit")
+    try:
+        session = resource_loader.create_session(agent_name)
+    except KeyError:
+        log.warning("unknown agent %r, fallback to visit", agent_name)
+        session = resource_loader.create_session("visit")
+    log.info("agent assembled: %s skills=%s", session.name, list(session.skills))
+
     policy = PolicyEngine(registry, settings)
     llm = build_llm(settings)
     approvals = ApprovalManager(traces, settings.approval_timeout_s)
@@ -83,6 +98,7 @@ async def lifespan(application: FastAPI):
         settings=settings, db=db, tree=tree, state=state, registry=registry,
         policy=policy, llm=llm, traces=traces, approvals=approvals, tasks=tasks, audio=audio,
         knowledge=knowledge, events=events,
+        session=session, resource_loader=resource_loader,
     )
     application.state.ctx = ctx
     if settings.auth_mode == "strict" and settings.auth_secret == "dev-only-change-me":
@@ -111,6 +127,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.include_router(routes_auth.router)
+    app.include_router(routes_agents.router)
     app.include_router(routes_chat.router)
     app.include_router(routes_visit.router)
     app.include_router(routes_audio.router)

@@ -131,6 +131,25 @@ def ensure_owner_or_manager(user: dict[str, Any], owner_id: str) -> None:
         raise ApiError(403, "FORBIDDEN", "无权访问该会话")
 
 
+def ensure_manager(
+    user: dict[str, Any], action: str = "执行该操作", *, hint: str | None = None,
+) -> None:
+    """高权限通道：只允许 manager/admin。
+
+    与 ensure_owner_or_manager 的区别是语义而非强度：后者是「数据归属」校验，
+    前者是「治理豁免」校验。人工降级通道绕过了 Agent 的审批链，因此必须把
+    权限收窄到主管——降级是可用性的兜底，不是权限的降级。
+
+    v0.6 起，本轮新增的三个高权限端点（人工取消 / 豁免台账 / 能力热更新）
+    统一走这个 helper，错误码与文案可预测；`hint` 让非审批类端点不套用
+    「销售请通过对话发起」这句不适用提示。v0.4 遗留端点仍有内联角色判断，
+    尚未迁移，属已知工程债（见 docs/08）。
+    """
+    if user["role"] not in ("manager", "admin"):
+        suffix = hint if hint is not None else "；销售请通过对话发起，由主管审批"
+        raise ApiError(403, "MANAGER_ONLY", f"只有主管可以{action}{suffix}")
+
+
 def ensure_can_decide(user: dict[str, Any], approval: dict[str, Any]) -> None:
     """审批：必须是 manager/admin，且不能批准自己发起的操作。"""
     if user["role"] not in ("manager", "admin"):

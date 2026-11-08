@@ -191,9 +191,18 @@ async def task_detail(
         "checkpoint": None if not checkpoint else {
             "step": checkpoint["step"], "skill": checkpoint["skill"],
             "created_at": checkpoint["created_at"],
+            "agent_name": checkpoint.get("agent_name"),
+            "capability_fingerprint": checkpoint.get("capability_fingerprint"),
+            "capability": checkpoint.get("capability") or {},
         },
+        # 把「为什么不能续跑」变成可查询的数据，而不只是 409 里的一句提示
+        "resume_compat": ctx.orchestrator.check_resume_compat(checkpoint or {}),
         "tool_executions": ctx.tasks.tool_count(turn_id),
-        "resumable": task["status"] == "interrupted" and checkpoint is not None,
+        "resumable": (
+            task["status"] == "interrupted"
+            and checkpoint is not None
+            and ctx.orchestrator.check_resume_compat(checkpoint)["status"] != "incompatible"
+        ),
     }
 
 
@@ -213,6 +222,14 @@ async def resume_task(
     checkpoint = ctx.tasks.latest_checkpoint(turn_id)
     if not checkpoint:
         raise conflict("TASK_NO_CHECKPOINT", "没有可用检查点，无法恢复")
+    compat = ctx.orchestrator.check_resume_compat(checkpoint)
+    if compat["status"] == "incompatible":
+        # 放在 try_lock 之前：拒绝时不占用会话锁，任务仍为 interrupted，
+        # 恢复原装配后可原样重试，无需重建任务。
+        raise conflict(
+            "AGENT_CAPABILITY_CHANGED",
+            compat["reason"] + f" 详见 GET /api/tasks/{turn_id} 的 resume_compat。",
+        )
     if not await ctx.state.try_lock(task["session_id"]):
         raise conflict("SESSION_BUSY", "同一会话有正在执行的 Turn，请稍后再试")
     await ctx.state.update(task["session_id"], status="running")

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.deps import get_ctx, get_current_user
-from app.auth import ensure_owner_or_manager
+from app.auth import ensure_manager, ensure_owner_or_manager
 from app.context import AppContext
 from app.domain.fsm import FSM
 from app.errors import ApiError, not_found
@@ -181,19 +181,49 @@ async def cancel_plan_manual(
     ctx: AppContext = Depends(get_ctx),
     user: dict[str, Any] = Depends(get_current_user),
 ):
+    """人工降级通道：模型不可用时由主管直接取消计划，**显式豁免 Agent 审批**。
+
+    这是一条有意保留的受控旁路，不是漏洞：
+
+    - 审批约束的是「模型自主发起的动作」（可能幻觉、被注入、误判意图），
+      不是「有身份、有明确意图的人」；主管点按钮不需要第二个人再确认一次；
+    - 但降级不等于降权：仅限 manager/admin，且销售本人也不能自助取消
+      （避免绕过业绩监督）；销售想取消仍走对话通道，由主管审批；
+    - 仍走显式 FSM 迁移表（终态不可取消）、仍写审计；
+    - 豁免本身被写进审计 `after.channel=manual_override` 与 `waiver_reason`，
+      主管可在 `GET /api/governance/manual-overrides` 拉出全部豁免台账。
+
+    所以「审批覆盖率」的正确口径是：**Agent 自主通道的高危动作 100% 进入审批**；
+    人工通道是登记在册的例外，不是未声明的绕过路径。
+    """
     plan = ctx.db.get_plan(plan_id)
     if not plan:
         raise not_found("PLAN_NOT_FOUND", "计划不存在")
-    ensure_owner_or_manager(user, plan.get("owner_id", ""))
+    ensure_manager(user, action="使用人工降级通道取消计划")
     result = FSM(ctx.db).plan(plan_id, "cancel", actor=user["user_id"])
     if not result.ok:
         raise ApiError(409, "PLAN_STATE_INVALID", result.reason)
     ctx.db.add_audit(
         actor=user["user_id"], action="plan.cancel.manual",
         target_type="plan", target_id=plan_id,
-        before={"status": plan["status"]}, after={"status": "cancelled"},
+        before={"status": plan["status"]},
+        after={
+            "status": "cancelled",
+            "channel": "manual_override",
+            "approval": "waived",
+            "waiver_reason": "explicit_human_action_by_manager",
+            "owner_id": plan.get("owner_id"),
+        },
     )
-    return {"plan": ctx.db.get_plan(plan_id)}
+    return {
+        "plan": ctx.db.get_plan(plan_id),
+        "governance": {
+            "channel": "manual_override",
+            "approval": "waived",
+            "waiver_reason": "explicit_human_action_by_manager",
+            "audited": True,
+        },
+    }
 
 
 @router.get("/skills")

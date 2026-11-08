@@ -216,6 +216,9 @@ CREATE TABLE IF NOT EXISTS turn_checkpoints (
   tool_calls    INTEGER DEFAULT 0,
   tokens_in     INTEGER DEFAULT 0,
   tokens_out    INTEGER DEFAULT 0,
+  agent_name    TEXT,
+  capability_fingerprint TEXT,
+  capability_json TEXT,
   created_at    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_checkpoints_turn ON turn_checkpoints(turn_id, step);
@@ -357,6 +360,16 @@ class Database:
         with self._conn() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(SCHEMA)
+            # 轻量迁移：v0.5 之前建的库没有能力快照列。MySQL 分支只做方言
+            # 翻译、无真实实例，旧库迁移仅覆盖 SQLite（见 docs/08 红线）。
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(turn_checkpoints)").fetchall()}
+            for column, ddl in (
+                ("agent_name", "TEXT"),
+                ("capability_fingerprint", "TEXT"),
+                ("capability_json", "TEXT"),
+            ):
+                if column not in cols:
+                    conn.execute(f"ALTER TABLE turn_checkpoints ADD COLUMN {column} {ddl}")
 
     @staticmethod
     def _mysql_schema(statement: str) -> str:

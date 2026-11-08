@@ -1,14 +1,16 @@
 ﻿# 拜访通 · BD 拜访 Agent
 
 > 面向企业销售 / BD 的**拜访任务 Agent**：一句话完成「查待办 → 建计划 → 改约 / 取消（人工审批）→ 签到 → 签退 → 录音纪要 → 日志」。
-> 底层是一套可拆插的 **Agent Runtime**：会话树与上下文压缩、分层 Skill 与混合意图路由、Tool Policy / HITL 审批 / 操作审计、Durable Execution（检查点、续跑、幂等）、全链路 Trace 与指标。
+> 底层是一套可拆插的 **Agent Runtime**：显式装配层（AgentSpec / ResourceLoader / AgentSession）、会话树与上下文压缩、分层 Skill 与混合意图路由、Tool Policy / HITL 审批 / 操作审计、Durable Execution（检查点、续跑、幂等）、全链路 Trace 与指标。
+> v0.5 起，能力集由配置在**装配期**决定，同一套 Runtime 可装配出不同能力集的 Agent，能力白名单在**执行期**硬校验；检查点绑定能力指纹，跨装配续跑会被显式拒绝。
+> 边界先说清：内置两套声明是**同一套 Skill 的不同子集**（全能力 / 只读），不是两个不同领域；执行期 guard 只在**能力被收紧**的 Agent 上才会真正拦截。
 
 | 项 | 状态 |
 |---|---|
-| 版本 | v0.4 · 2026-11-01 |
+| 版本 | v0.6 · 2026-11-08 |
 | 运行 | ✅ 可运行；Mock 模式无需 API Key，Redis / MySQL 不可用时自动降级 |
-| 测试 | `pytest` **65 passed**（FSM、断点续跑、路由回退、权限治理、ASR、知识检索、SQL 方言、观测） |
-| 演示 | 冒烟测试 7 个场景（含审批批准），看板 100% 成功率 / 5 条种子 Trace |
+| 测试 | `pytest` **86 passed**（FSM、断点续跑与能力指纹、路由回退、权限治理、执行期能力边界、人工通道豁免、ASR、知识检索、SQL 方言、观测） |
+| 演示 | `backend/scripts/smoke_scenarios.py` 7 组可复现场景（含双通道治理与能力快照），看板 100% 成功率 / 5 条种子 Trace |
 | 技术栈 | Python 3.11+ / FastAPI / SQLite（可选 MySQL、Redis）/ Vue3 / SSE / pytest |
 
 > [!IMPORTANT]
@@ -75,14 +77,17 @@ python backend/run.py
 
 ```text
 p1-visittong/
-├─ assets/                 架构图（简历类素材未收录）
+├─ assets/                 架构图
 ├─ docs/                   需求 → PRD → 技术方案 → 数据模型 → 验收 → 架构对照
 ├─ backend/
 │  ├─ run.py               启动入口
 │  ├─ requirements*.txt    依赖锁定
+│  ├─ agents/              Agent 能力声明（JSON，启动期读取 / 可热更新）
+│  ├─ scripts/             Pi 架构对照实证、端到端冒烟（均可复现）
 │  ├─ tests/               单元 / 接口测试
 │  └─ app/
 │     ├─ agent/            事件包络、工具流水线、hooks、上下文压缩、纪要
+│     ├─ runtime/           显式装配层：AgentSpec / ResourceLoader / AgentSession
 │     ├─ orchestrator/     Turn 状态机 + 混合意图路由
 │     ├─ domain/           db / fsm / tasks / audio / pipeline
 │     ├─ adapters/         crm / poi / asr / notify / knowledge（可替换边界）
@@ -99,6 +104,24 @@ p1-visittong/
 
 **一次对话怎么走**：HTTP/SSE 请求 → 鉴权与归属校验 → 混合路由（规则置信度 ≥0.9 直通，其余走 LLM Function Calling 分类，低置信或异常回退规则）→ 选中一个 Skill → 槽位填充 / 指代消解 → Tool Policy（读写 scope、角色、风险）→ 高危操作挂起审批 → 工具执行与检查点落盘 → 卡片 / 增量事件回流 → Trace 与指标。
 
+**能力集在启动期装配，不在代码里写死**：`ResourceLoader` 读 `backend/agents/*.json` → 校验（未知 Skill / 未注册工具 / 孤儿工具直接 fail fast）→ `AgentSession` 持有本次运行的 Skill 白名单、工具白名单、提示词覆写 → `Orchestrator` 只通过它取能力。边界共四层：**装配期裁剪 → 路由期降级（越权 Skill 回落 `chat` 并写 `capability_denied` 事件）→ 执行期 `capability_guard` 硬校验（模型即便吐出白名单外的工具名也不会执行，且写审计）→ PolicyEngine 管角色与风险**。这样「少给模型看几个 schema」不等于「能力边界」，两者都有实现。
+
+**guard 的生效条件（避免夸大）**：默认 `visit` 装配的是全量已注册工具，`allows_tool()` 恒为真，guard 在这条路径上一次都不会触发——全能力 Agent 本就不该拦任何已注册工具。它真正防的是**能力收紧后的 Agent 被幻觉 / 提示词注入 / 回放污染诱导调用白名单外工具**；`ops_readonly` 下由 `test_execution_guard_blocks_unauthorized_tool` 断言假 handler 一次都没执行。此外幂等回放与 `resume` 两条历史旁路已接回 guard；每次写检查点都落 `agent_name` + `capability_fingerprint` + 能力快照，`reload` 后能力集不一致时 `POST /api/tasks/{id}/resume` 返回 `AGENT_CAPABILITY_CHANGED`，`GET /api/tasks/{id}` 的 `resume_compat` 可直接查原因。指纹只绑定**装配授权集**，不含运行期工具启停（否则关一个工具会让所有检查点失效），启停仍由策略引擎每次调用硬拦。
+
+```bash
+cd backend
+python scripts/pi_evidence.py                   # 离线 7 组实证，无需服务 / 无需 API Key
+
+AUTH_MODE=demo python run.py                    # 默认 visit；AGENT_NAME=ops_readonly 切只读 Agent
+# 另开一个终端（demo 模式用 X-User-Id，严格模式改 Bearer Token）：
+curl -H "X-User-Id: manager-001" http://127.0.0.1:8020/api/agents
+curl -H "X-User-Id: manager-001" http://127.0.0.1:8020/api/governance/manual-overrides
+curl -X POST -H "X-User-Id: manager-001" http://127.0.0.1:8020/api/agents/reload
+python scripts/smoke_scenarios.py                # 端到端 7 组（服务需保持运行）
+```
+
+内置两套声明：`visit`（全能力）与 `ops_readonly`（只装配 `todo_query` + 两个只读工具），用来证明**同一套 Runtime、不同能力集**。详见 [docs/07](docs/07-Pi-Agent架构对照与优化.md)。
+
 ## 5. 关键机制
 
 | 能力 | 实现落点 |
@@ -107,6 +130,8 @@ p1-visittong/
 | Durable Execution | `domain/tasks.py`：`task_runs` / `turn_checkpoints` / `tool_executions` 每步落检查点；`POST /api/tasks/{turn_id}/resume` 断点续跑；工具级 `(turn_id, step, call_id)` 唯一约束保证幂等回放；启动把遗留 `running` 标为 `interrupted` |
 | 混合意图路由 | `orchestrator/router.py`，`ROUTER_MODE=rules/hybrid/llm` 可切，含 LLM 异常回退测试 |
 | 分层 Skill / 工具 | 8 个 Skill、10 个工具，注册即用；`ToolSpec.scope=read/write` + `roles` 拒绝越权调用 |
+| 显式装配 / 能力边界 | `runtime/`：`AgentSpec`（JSON 能力声明）、`ResourceLoader`（校验 + reload + 渐进披露）、`AgentSession`（能力视图 + 指纹）；`agent/pipeline.py` 的 `capability_guard` 执行期硬校验（含回放 / resume 路径）；`GET /api/agents`、`GET /api/agents/{name}/skills` 可查 |
+| 人工降级通道 | `POST /api/plans/{id}/cancel` 仅 manager/admin，**显式豁免 Agent 审批**并写 `waiver_reason`；`GET /api/governance/manual-overrides` 拉豁免台账（主管）。仍走 FSM 与审计 |
 | 治理与审计 | `audit_log` + `GET /api/audit`（主管）；写工具、审批决策、手工接口、知识同步、ASR 均留痕；`Idempotency-Key` 防重放 |
 | 录音 → 纪要 | 分片上传 → Redis/内存聚合 → ASR（mock / faster_whisper / command）→ 结构化纪要 |
 | 知识检索 | 本地向量索引（hash-gram embedding + 余弦）+ Milvus 适配接口；精确匹配失败时语义兜底 |
@@ -127,9 +152,11 @@ p1-visittong/
 
 ## 7. 验证结果
 
-- 冒烟测试：7 个场景跑通（含审批批准），看板 100% 成功率、5 条种子 Trace，页面返回 200。
-- `pytest` **65 passed**：覆盖 FSM、模拟崩溃后断点续跑、路由与 LLM 异常回退、权限治理、ASR、知识检索、MySQL 方言翻译、可观测性。
-- 指标口径（演示集）：计划创建 4 轮内完成、平均对话轮次 ≤3、高危操作 100% 进入审批、100% Turn 有 Trace。
+- 冒烟测试：`python backend/scripts/smoke_scenarios.py`（需先 `AUTH_MODE=demo python backend/run.py`），7 组全通，含双通道治理与能力快照；看板 100% 成功率、5 条种子 Trace。脚本在公开仓库内，数字可现场复现。
+- `pytest` **86 passed**：覆盖 FSM、模拟崩溃后断点续跑与能力指纹、路由与 LLM 异常回退、权限治理、Agent 显式装配与执行期能力边界、人工通道豁免台账、ASR、知识检索、MySQL 方言翻译、可观测性。
+- 指标口径（演示集）：计划创建 4 轮内完成、平均对话轮次 ≤3、**Agent 自主通道**的高危动作 100% 进入审批、100% Turn 有 Trace。人工降级通道是登记在册的显式豁免，不计入该分母（见下）。
+
+> **关于「100% 审批」的准确口径**：模型自主发起的高危动作（`cancel_visit_plan` 等）无例外进入 HITL；但系统保留一条**有意建模**的人工通道——主管在模型不可用时可直接取消计划，不经过 Agent 审批。这不是未声明的绕过：限定 manager/admin、销售本人不可替代操作、仍走显式 FSM 迁移表、仍写审计，且豁免理由 `explicit_human_action_by_manager` 与台账端点都可举证。设计权衡是：审批约束的是「模型自主发起的可能误判动作」，不是「有身份、有明确意图的人」；若主管不在时模型又不可用，把人工通道也锁进审批等于业务停摆。详见 `routes_visit.py:cancel_plan_manual` 与 `test_governance.py`。
 
 ## 8. 文档索引
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
-from typing import Any
+from typing import Any, Iterable
 
 from app.adapters import crm
 from app.domain.db import Database
@@ -136,8 +136,13 @@ def build_slots(db: Database, text: str) -> dict[str, Any]:
     return slots
 
 
-def route_card(db: Database, card_name: str, action_id: str, skill_name: str, payload: dict[str, Any]) -> RouteResult:
-    skill = skill_name if skill_name in SKILLS else "chat"
+def route_card(
+    db: Database, card_name: str, action_id: str, skill_name: str, payload: dict[str, Any],
+    *, allowed: Iterable[str] | None = None,
+) -> RouteResult:
+    """卡片精确通道；allowed 为当前 Agent 可见技能，缺省用全局 SKILLS。"""
+    valid = set(allowed) if allowed is not None else set(SKILLS)
+    skill = skill_name if skill_name in valid else "chat"
     slots = dict(payload or {})
     if action_id and action_id.startswith("c_"):
         customer = db.get_customer(action_id)
@@ -147,7 +152,10 @@ def route_card(db: Database, card_name: str, action_id: str, skill_name: str, pa
     return RouteResult(skill, 1.0, source="card", slots=slots, reason=f"{card_name}:{action_id}")
 
 
-async def route_text_hybrid(db: Database, text: str, llm: Any, settings: Any) -> RouteResult:
+async def route_text_hybrid(
+    db: Database, text: str, llm: Any, settings: Any,
+    *, labels: list[str] | None = None,
+) -> RouteResult:
     """总控路由：规则优先，规则不确定时交给 LLM 分类，再不行回退 chat。
 
     - router_mode=rules：只用规则（离线/测试）；
@@ -161,9 +169,10 @@ async def route_text_hybrid(db: Database, text: str, llm: Any, settings: Any) ->
     if settings.router_mode == "hybrid" and rule.confidence >= 0.9:
         return rule
 
-    labels = list(SKILLS) + ["chat"]
+    # 候选标签来自当前 Agent 的能力集；未显式装配时退化为全局 SKILLS
+    candidate_labels = [*labels, "chat"] if labels is not None else [*SKILLS, "chat"]
     try:
-        result = await llm.classify(text, labels)
+        result = await llm.classify(text, candidate_labels)
     except Exception:  # noqa: BLE001  路由失败必须可降级，不能拖垮整个 Turn
         result = None
     if isinstance(result, dict):
@@ -172,7 +181,7 @@ async def route_text_hybrid(db: Database, text: str, llm: Any, settings: Any) ->
             confidence = float(result.get("confidence") or 0)
         except (TypeError, ValueError):
             confidence = 0.0
-        if skill in labels and confidence >= float(settings.router_confidence_min):
+        if skill in candidate_labels and confidence >= float(settings.router_confidence_min):
             slots = build_slots(db, text)
             slots.update(result.get("slots") or {})
             return RouteResult(skill, confidence, "llm", slots, str(result.get("reason") or "llm_route"))

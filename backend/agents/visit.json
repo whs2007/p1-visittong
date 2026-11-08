@@ -1,0 +1,16 @@
+{
+  "name": "visit",
+  "label": "拜访通 · 销售助手",
+  "description": "全能力销售 Agent：待办查询、计划创建/修改/取消、签到签退、日志、提醒。",
+  "skills": [
+    "todo_query",
+    "plan_create",
+    "plan_update",
+    "plan_cancel",
+    "checkin",
+    "visit_log",
+    "checkout",
+    "reminder"
+  ],
+  "tools": null
+}

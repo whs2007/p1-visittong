@@ -1,12 +1,14 @@
-"""可观测：看板聚合与 Trace 明细。"""
+"""可观测：看板聚合、Trace 明细、治理豁免台账。"""
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse
 
 from app.api.deps import get_ctx, get_current_user
+from app.auth import ensure_manager
 from app.context import AppContext
 from app.errors import ApiError, not_found
 from app.skills.visit_skills import skill_catalog
@@ -24,6 +26,53 @@ async def audit_log(
     if user["role"] not in ("manager", "admin"):
         raise ApiError(403, "FORBIDDEN", "只有主管可以查看操作审计")
     return {"audit": ctx.db.list_audit(limit)}
+
+
+@router.get("/governance/manual-overrides")
+async def manual_overrides(
+    limit: int = 100,
+    ctx: AppContext = Depends(get_ctx),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """人工降级通道的豁免台账（主管可查）。
+
+    把「审批有例外」从一句口头声明变成可举证的数据：每次豁免都有操作者、
+    目标、豁免理由与时间戳，可统计、可回放。没有这个视图，「显式豁免」
+    和「偷偷开后门」在证据上无法区分。
+    """
+    ensure_manager(user, action="查看治理豁免台账", hint="")
+    items: list[dict[str, Any]] = []
+    for row in ctx.db.list_audit(min(max(limit, 1), 500)):
+        try:
+            after = json.loads(row.get("after") or "{}")
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(after, dict) or after.get("channel") != "manual_override":
+            continue
+        items.append({
+            "actor": row.get("actor"),
+            "action": row.get("action"),
+            "target_id": row.get("target_id"),
+            "owner_id": after.get("owner_id"),
+            "approval": after.get("approval"),
+            "waiver_reason": after.get("waiver_reason"),
+            "created_at": row.get("created_at"),
+        })
+    return {
+        "policy": {
+            "scope": "Agent 自主通道的高危动作 100% 进入审批",
+            "exception": "人工表单降级通道（POST /api/plans/{id}/cancel）不进入审批",
+            "constraints": [
+                "仅 manager/admin",
+                "仍走显式 FSM 迁移表，终态不可取消",
+                "每次豁免强制写审计，含 channel / approval / waiver_reason / owner_id",
+                "主管可通过本端点拉取全部豁免记录",
+            ],
+            "rationale": "审批约束模型自主动作；模型不可用时业务不能锁死，故保留高权限人工通道，降级不降权。",
+        },
+        "count": len(items),
+        "items": items,
+    }
 
 
 @router.get("/dashboard/stats")

@@ -1,0 +1,7 @@
+{
+  "name": "ops_readonly",
+  "label": "只读查询助手",
+  "description": "只装配 todo_query 与两个只读工具，用于验证同一 Runtime 下的 Agent 能力隔离。",
+  "skills": ["todo_query"],
+  "tools": ["query_todos", "query_plans"]
+}

@@ -82,16 +82,28 @@ class TaskStore:
     def save_checkpoint(
         self, *, turn_id: str, step: int, skill: str, messages: list[dict[str, Any]],
         slots: dict[str, Any], tool_calls: int = 0, tokens_in: int = 0, tokens_out: int = 0,
+        agent_name: str | None = None,
+        capability_fingerprint: str | None = None,
+        capability: dict[str, Any] | None = None,
     ) -> str:
+        """检查点绑定本次装配的能力集。
+
+        为什么需要：resume 会用**当前** Agent 的能力视图继续执行，而 checkpoint
+        里的 messages 是**旧** Agent 的系统提示词与工具结果。若中途 reload 换了
+        能力集，静默续跑等于「用新权限执行旧意图」，是权限提升。三者一起存：
+        name 便于人读、fingerprint 用于比较、完整 JSON 用于事后举证。
+        """
         checkpoint_id = new_id("ck")
         self.db._exec(  # noqa: SLF001
-            "INSERT INTO turn_checkpoints (checkpoint_id,turn_id,step,skill,messages,slots,tool_calls,tokens_in,tokens_out,created_at)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO turn_checkpoints (checkpoint_id,turn_id,step,skill,messages,slots,tool_calls,tokens_in,tokens_out,agent_name,capability_fingerprint,capability_json,created_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 checkpoint_id, turn_id, step, skill,
                 json.dumps(messages, ensure_ascii=False),
                 json.dumps(slots, ensure_ascii=False),
-                tool_calls, tokens_in, tokens_out, now_iso(),
+                tool_calls, tokens_in, tokens_out,
+                agent_name, capability_fingerprint,
+                json.dumps(capability or {}, ensure_ascii=False), now_iso(),
             ),
         )
         self.update(turn_id, step=step, skill=skill)
@@ -107,6 +119,10 @@ class TaskStore:
             return None
         row["messages"] = json.loads(row.get("messages") or "[]")
         row["slots"] = json.loads(row.get("slots") or "{}")
+        try:
+            row["capability"] = json.loads(row.get("capability_json") or "{}")
+        except (TypeError, ValueError):
+            row["capability"] = {}
         return row
 
     # ------------------------------------------------------------------ #

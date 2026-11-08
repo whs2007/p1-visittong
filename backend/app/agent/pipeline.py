@@ -3,6 +3,7 @@
 Pi 把「工具拦截/审批」放在 extension 的 tool_call hook 里；P1 是业务系统，
 把等价能力内建为可测试的流水线：
 
+  0. capability_guard（Agent 装配期白名单的执行期硬校验）
   1. emit tool_call
   2. hooks.before_tool_call（扩展可 block / 降级）
   3. PolicyEngine（白名单 / Schema / 危险模式 / 风险等级）
@@ -10,6 +11,11 @@ Pi 把「工具拦截/审批」放在 extension 的 tool_call hook 里；P1 是�
   5. 执行（超时 + 异常兜底）
   6. hooks.after_tool_result + Trace 落库
   7. emit card / slot_fill / tool_result
+
+能力边界说明：schema 裁剪只影响「模型看得见什么」，模型仍可能吐出白名单外的
+工具名（幻觉 / 提示词注入 / 回放污染）。tool_guard 是执行前的最后一道硬校验，
+与 PolicyEngine 的角色权限、风险等级解耦：前者管「这个 Agent 有没有这项能力」，
+后者管「这个人能不能做这个动作」。
 
 并行说明（Pi 默认 parallel）：P1 的工具会写 SQLite 且有"待人工审批"的阻塞，
 因此保持顺序执行；ToolSpec 上保留扩展位，后续可对只读工具开启并发。
@@ -50,6 +56,7 @@ class ToolPipeline:
         state: SessionState,
         knowledge: Any = None,
         hooks: HookChain | None = None,
+        tool_guard: Callable[[str, str], str | None] | None = None,
     ) -> None:
         self.settings = settings
         self.registry = registry
@@ -61,6 +68,8 @@ class ToolPipeline:
         self.state = state
         self.knowledge = knowledge
         self.hooks = hooks or HookChain()
+        # (tool_name, active_skill) -> 拒绝原因；None 表示放行
+        self.tool_guard = tool_guard
 
     async def run(
         self,
@@ -78,16 +87,27 @@ class ToolPipeline:
         )
 
         started = time.monotonic()
-        # 1) 扩展钩子优先（对齐 Pi tool_call hook 的 block 语义）
-        decision: HookDecision | None = await self.hooks.before_tool_call(call)
-        if decision is None:
-            user = self.db.get_user(user_id) or {}
-            policy = self.policy.evaluate(
-                user_id=user_id, role=str(user.get("role") or ""), name=call.name, args=call.args,
+        # 0) 能力边界：装配期白名单在执行期硬校验，越权调用连策略/审批都不进入
+        guard_reason = self.tool_guard(call.name, skill) if self.tool_guard is not None else None
+        if guard_reason is not None:
+            await self.traces.add_event(
+                trace_id, "capability_denied", name=call.name,
+                payload={"skill": skill, "reason": guard_reason, "args": call.args},
             )
             decision = HookDecision(
-                action=policy.action, reason=policy.reason, risk=policy.risk, rule=policy.rule
+                action="deny", reason=guard_reason, risk="high", rule="capability_guard"
             )
+        else:
+            # 1) 扩展钩子优先（对齐 Pi tool_call hook 的 block 语义）
+            decision = await self.hooks.before_tool_call(call)
+            if decision is None:
+                user = self.db.get_user(user_id) or {}
+                policy = self.policy.evaluate(
+                    user_id=user_id, role=str(user.get("role") or ""), name=call.name, args=call.args,
+                )
+                decision = HookDecision(
+                    action=policy.action, reason=policy.reason, risk=policy.risk, rule=policy.rule
+                )
 
         approval_id: str | None = None
         approved: bool | None = None

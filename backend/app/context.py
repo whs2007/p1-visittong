@@ -14,6 +14,7 @@ from app.domain.tasks import TaskStore
 from app.llm.base import BaseLLM
 from app.orchestrator.loop import Orchestrator
 from app.policy.engine import PolicyEngine
+from app.runtime import AgentSession, ResourceLoader
 from app.sessions.store import SessionState
 from app.sessions.tree import SessionTree
 from app.skills.registry import ToolRegistry
@@ -35,6 +36,8 @@ class AppContext:
     audio: AudioStore
     knowledge: Any
     events: EventPipeline
+    session: AgentSession | None = None
+    resource_loader: ResourceLoader | None = None
     login_failures: dict[str, dict[str, float]] = field(default_factory=dict)
     orchestrator: Orchestrator = field(init=False)
 
@@ -51,4 +54,5 @@ class AppContext:
             approvals=self.approvals,
             tasks=self.tasks,
             knowledge=self.knowledge,
+            session=self.session,
         )
