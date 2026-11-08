@@ -5,10 +5,8 @@ import asyncio
 import json
 from datetime import datetime
 
-import pytest
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401  注册工具
+import pytest
 from app.approvals import ApprovalManager
 from app.auth import ensure_can_decide
 from app.config import Settings
@@ -20,6 +18,7 @@ from app.policy.engine import PolicyEngine
 from app.sessions.tree import SessionTree, ensure_columns
 from app.skills.registry import registry
 from app.trace.store import TraceStore
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:
@@ -209,13 +208,13 @@ def test_policy_decisions(tmp_path):
     settings = make_settings(tmp_path)
     policy = PolicyEngine(registry, settings)
 
-    assert policy.evaluate(user_id="u", name="cancel_visit_plan", args={}).action == "approval"
-    assert policy.evaluate(user_id="u", name="checkin", args={"distance_m": 320}).action == "allow"
-    assert policy.evaluate(user_id="u", name="checkin", args={"distance_m": 1200}).action == "approval"
-    assert policy.evaluate(user_id="u", name="checkin", args={"distance_m": 3000}).action == "deny"
-    assert policy.evaluate(user_id="u", name="query_todos", args={}).action == "allow"
-    assert policy.evaluate(user_id="u", name="save_visit_log", args={}).action == "deny"
-    assert policy.evaluate(user_id="u", name="no_such_tool", args={}).action == "deny"
+    assert policy.evaluate(user_id="u", role="sales", name="cancel_visit_plan", args={}).action == "approval"
+    assert policy.evaluate(user_id="u", role="sales", name="checkin", args={"distance_m": 320}).action == "allow"
+    assert policy.evaluate(user_id="u", role="sales", name="checkin", args={"distance_m": 1200}).action == "approval"
+    assert policy.evaluate(user_id="u", role="sales", name="checkin", args={"distance_m": 3000}).action == "deny"
+    assert policy.evaluate(user_id="u", role="sales", name="query_todos", args={}).action == "allow"
+    assert policy.evaluate(user_id="u", role="sales", name="save_visit_log", args={}).action == "deny"
+    assert policy.evaluate(user_id="u", role="sales", name="no_such_tool", args={}).action == "deny"
 
 
 def test_tool_disable_denies(tmp_path):

@@ -1,11 +1,13 @@
 """P1 公开冒烟脚本：7 组场景，逐组断言，输出可复现的通过率。
 
-用法（项目根目录）：
-    python backend/run.py                       # 另开一个终端
-    python backend/scripts/smoke_scenarios.py
+用法（两种，都只依赖本仓库）：
+    python backend/scripts/smoke_scenarios.py --serve    # 自动拉起 demo 服务再跑（make verify 用）
+    python backend/run.py                               # 或者自己起服务
+    python backend/scripts/smoke_scenarios.py           # 再跑这一条
 
 可选配置：
     P1_BASE_URL        默认 http://127.0.0.1:8020
+    P1_SERVE_PORT      --serve 时使用的端口（默认 8021，避开常见占用）
     P1_TOKEN_SALES     Bearer Token（严格鉴权模式下）
     P1_TOKEN_MANAGER   主管 Bearer Token
     P1_DEMO_PASSWORD   demo 账号密码，脚本自行调用 /api/login
@@ -13,14 +15,20 @@
 
 刻意不硬编码机器路径 / 数据库文件 / 端口：所有状态都经 HTTP 读取，
 因此这份脚本和 README 里「7 组场景 100% 通过」的数字在别人机器上也复现得了。
+`--serve` 存在的原因很实际：如果验收命令要求「先手动起服务」，那它就不是
+一条命令，CI 里也没法原样跑（README 写着 `make verify`，就必须真的能一把过）。
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import random
+import subprocess
 import sys
+import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Callable
 
 import httpx
@@ -31,6 +39,38 @@ if hasattr(sys.stdout, "reconfigure"):
 BASE = os.getenv("P1_BASE_URL", "http://127.0.0.1:8020").rstrip("/")
 SALES = os.getenv("P1_SALES_USER", "sales-001")
 MANAGER = os.getenv("P1_MANAGER_USER", "manager-001")
+
+
+def _start_server(port: int) -> tuple[subprocess.Popen, str]:
+    """拉起一个隔离的 demo 服务：独立端口 + 独立数据库，不污染本地演示数据。"""
+    root = Path(__file__).resolve().parents[2]
+    db_dir = root / "data" / "_smoke"
+    db_dir.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    env.update({
+        "HOST": "127.0.0.1",
+        "PORT": str(port),
+        "AUTH_MODE": "demo",
+        "AUTH_ALLOW_INSECURE_SECRET": "1",
+        "SQLITE_PATH": str(db_dir / "smoke.db"),
+    })
+    proc = subprocess.Popen(
+        [sys.executable, str(root / "backend" / "run.py")],
+        cwd=str(root), env=env,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    base = f"http://127.0.0.1:{port}"
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            raise RuntimeError("服务启动失败：进程已退出（看 backend/data 日志或手动跑一次 run.py）")
+        try:
+            httpx.get(base + "/api/config", timeout=2)
+            return proc, base
+        except Exception:  # noqa: BLE001  还没起来，继续等
+            time.sleep(0.4)
+    proc.terminate()
+    raise RuntimeError("服务 60s 内未就绪")
 
 
 def auth_headers(client: httpx.Client, uid: str, role: str) -> dict[str, str]:
@@ -195,6 +235,27 @@ SCENARIOS: list[tuple[str, Callable[..., str]]] = [
 
 
 def main() -> int:
+    global BASE
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--serve", action="store_true", help="自动拉起隔离的 demo 服务再跑")
+    parser.add_argument("--port", type=int, default=int(os.getenv("P1_SERVE_PORT", "8021")))
+    args = parser.parse_args()
+
+    proc: subprocess.Popen | None = None
+    try:
+        if args.serve:
+            proc, BASE = _start_server(args.port)
+        return _run()
+    finally:
+        if proc is not None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+
+
+def _run() -> int:
     print(f"P1 smoke → {BASE}（{len(SCENARIOS)} 组）")
     state: dict[str, Any] = {}
     passed = 0

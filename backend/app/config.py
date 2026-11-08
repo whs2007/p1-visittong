@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "拜访通 · BD 拜访 Agent"
-    version: str = "0.1.0"
+    version: str = "0.7.0"      # /api/config 与冒烟输出都会读它，别再让它和文档漂开
 
     # ---------- 鉴权 ----------
     auth_mode: str = "strict"                    # strict | demo（demo 额外允许 X-User-Id，仅本地演示）
@@ -29,7 +29,10 @@ class Settings(BaseSettings):
     demo_password: str = "123456"                # demo 账号初始密码（README 已注明）
     login_max_attempts: int = 5                  # 同一账号+IP 连续失败次数上限
     login_lock_seconds: int = 300                # 触发后的锁定秒数
-    allowed_origins: str = "*"                   # 逗号分隔；生产建议填具体域名
+    # 跨域白名单，逗号分隔。**默认空 = 不放行任何跨域**（前端与后端同源，不需要）。
+    # 旧默认是 "*"，配合 allow_credentials 等于任何站点都能带凭据调接口。
+    # 本地前后端分离开发时显式设 ALLOWED_ORIGINS=http://127.0.0.1:5173。
+    allowed_origins: str = ""
 
     # ---------- LLM ----------
     llm_mode: str = "mock"          # mock | live（MVP 默认离线演示）

@@ -22,8 +22,13 @@ DANGEROUS_COMMAND_RULES: list[tuple[str, str, str]] = [
     ("drop_table", r"\b(drop\s+(table|database)|truncate\s+table)\b", "删表/删库"),
 ]
 
-_TYPE_MAP: dict[str, tuple[type, ...]] = {
-    "string": (str,),
+# 会被人工阅读 / 外发给客户的自由文本字段。危险命令规则只扫这些字段。
+FREE_TEXT_FIELDS: set[str] = {
+    "summary", "feedback", "next_action", "topic", "message",
+    "target", "text", "content", "reason", "file_path", "question",
+}
+
+_TYPE_MAP: dict[str, tuple[type, ...]] = {    "string": (str,),
     "integer": (int,),
     "number": (int, float),
     "boolean": (bool,),
@@ -43,12 +48,28 @@ def _iter_strings(value: Any):
             yield from _iter_strings(item)
 
 
-def match_dangerous(args: dict[str, Any]) -> tuple[str, str] | None:
-    """返回 (规则名, 命中的文本片段)。"""
-    for text in _iter_strings(args):
-        for name, pattern, _desc in DANGEROUS_COMMAND_RULES:
-            if re.search(pattern, text, flags=re.IGNORECASE):
-                return name, text[:120]
+def match_dangerous(
+    args: dict[str, Any], *, fields: set[str] | None = None
+) -> tuple[str, str] | None:
+    """返回 (规则名, 命中的文本片段)。
+
+    **只扫描自由文本字段**（`FREE_TEXT_FIELDS`）。原因：本项目没有任何执行
+    shell 的工具，这 14 条规则的真实用途是「文本内容风控」—— 销售写给客户的
+    通知、拜访日志、跟进备注会经 outbox 外发，若里面夹带 `rm -rf /` 这类串，
+    说明可能是误粘贴或提示词注入的残留物，值得升级人工确认。
+
+    v0.7 之前它对**所有**字符串参数做匹配（`plan_id`、`planned_at` 也扫），
+    既拦不住真攻击（没有执行面），又会对正常业务参数误报。审计把这条列为
+    「装饰性治理」，本次按真实用途收窄，并在文档里写清它防的是什么。
+    """
+    fields = FREE_TEXT_FIELDS if fields is None else fields
+    for key, value in args.items():
+        if key not in fields:
+            continue
+        for text in _iter_strings(value):
+            for name, pattern, _desc in DANGEROUS_COMMAND_RULES:
+                if re.search(pattern, text, flags=re.IGNORECASE):
+                    return name, text[:120]
     return None
 
 

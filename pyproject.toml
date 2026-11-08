@@ -1,0 +1,24 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["frontend", "data", "evals"]
+
+[tool.ruff.lint]
+# E/F 是错误与未使用；I 是导入顺序。先只上这三类，避免一次性引入海量风格告警。
+select = ["E", "F", "I"]
+ignore = [
+    "E501",  # 行宽交给 formatter/评审，避免为了折行牺牲可读性
+    "E402",  # 脚本需要在 sys.path 调整后再导入
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/scripts/*.py" = ["E402", "F401"]
+"backend/tests/*.py" = ["F401"]
+
+[tool.pytest.ini_options]
+# 单一事实源：仓库根 pyproject 是唯一 pytest 配置（原 backend/pytest.ini 已删）。
+# 之前两份配置并存，从根目录跑 pytest 会读到这份、缺 asyncio_mode，
+# 于是 async 用例被当同步函数调用——10 条失败全是配置漂移，不是逻辑错。
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+addopts = "-q -p no:cacheprovider"

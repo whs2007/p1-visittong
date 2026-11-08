@@ -4,15 +4,14 @@ from __future__ import annotations
 import json
 import sqlite3
 
-import pytest
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401
+import pytest
 from app.config import Settings
 from app.domain.db import Database
 from app.main import create_app
 from app.policy.engine import PolicyEngine
 from app.skills.registry import ToolRegistry, ToolSpec
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:
@@ -95,7 +94,8 @@ def test_policy_denies_role_without_permission(tmp_path) -> None:
     allowed = policy.evaluate(user_id="manager-001", role="manager", name="manager_only", args={})
     assert allowed.action == "allow"
     # 未传 role 时保持旧行为（系统内部调用/单测）
-    assert policy.evaluate(user_id="sales-001", name="manager_only", args={}).action == "allow"
+    # v0.7 fail-closed：role 缺失不再等于「跳过角色限制」，而是直接拒绝
+    assert policy.evaluate(user_id="sales-001", name="manager_only", args={}).action == "deny"
 
 
 def test_write_tool_is_audited_and_manager_can_read(client, manager_client) -> None:

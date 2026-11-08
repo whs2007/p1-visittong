@@ -215,6 +215,18 @@ async def cancel_plan_manual(
             "owner_id": plan.get("owner_id"),
         },
     )
+    if getattr(ctx, "governance", None) is not None:
+        ctx.governance.record(
+            action="plan.cancel.manual",
+            actor=user["user_id"], actor_role=str(user.get("role") or ""),
+            target_type="plan", target_id=plan_id,
+            before={"status": plan["status"]},
+            after={
+                "status": "cancelled", "approval": "waived",
+                "owner_id": plan.get("owner_id"),
+            },
+            reason="explicit_human_action_by_manager",
+        )
     return {
         "plan": ctx.db.get_plan(plan_id),
         "governance": {
@@ -242,9 +254,30 @@ async def toggle_tool(
     ctx: AppContext = Depends(get_ctx),
     user: dict[str, Any] = Depends(get_current_user),
 ):
-    if user["role"] not in ("manager", "admin"):
-        raise ApiError(403, "FORBIDDEN", "只有主管可以启停工具")
-    spec = ctx.registry.set_enabled(name, body.enabled)
+    """启停工具。
+
+    这是**改系统行为边界**的动作，不是业务动作：停掉 `cancel_visit_plan`，
+    整条高危审批链路就静默失效。因此必须留痕（audit_log 给业务侧检索，
+    governance_events 给治理侧检索），并且只允许主管操作。
+    """
+    ensure_manager(user, action="启停工具", hint="")
+    spec = ctx.registry.get(name)
     if not spec:
         raise not_found("TOOL_NOT_FOUND", f"工具不存在：{name}")
+    before = {"enabled": spec.enabled}
+    spec = ctx.registry.set_enabled(name, body.enabled)
+    assert spec is not None
+    ctx.db.add_audit(
+        actor=user["user_id"], action=f"tool.{name}.toggle",
+        target_type="tool", target_id=name,
+        before=before, after={"enabled": spec.enabled},
+    )
+    if getattr(ctx, "governance", None) is not None:
+        ctx.governance.record(
+            action="tool.enable" if body.enabled else "tool.disable",
+            actor=user["user_id"], actor_role=str(user.get("role") or ""),
+            target_type="tool", target_id=name,
+            before=before, after={"enabled": spec.enabled},
+            reason="manager tool toggle",
+        )
     return {"name": name, "enabled": spec.enabled}

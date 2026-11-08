@@ -254,25 +254,57 @@ class TraceStore:
     # ------------------------------------------------------------------ #
     # 看板聚合
     # ------------------------------------------------------------------ #
-    async def dashboard(self, limit: int = 20) -> dict[str, Any]:
-        traces = await self.recent_traces(limit)
+    async def dashboard(
+        self, limit: int = 20, *, user_id: str | None = None, window_hours: int | None = None
+    ) -> dict[str, Any]:
+        """看板聚合。
 
-        def _aggregate() -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
-            with self._conn() as conn:
-                status_rows = conn.execute(
-                    "SELECT status, latency_ms, skill FROM traces"
-                ).fetchall()
-                event_rows = conn.execute(
-                    "SELECT payload, status, latency_ms, type FROM trace_events"
-                    " WHERE type IN ('tool_result','tool_call') ORDER BY id DESC LIMIT 1000"
-                ).fetchall()
-            return (
-                [dict(r) for r in status_rows],
-                [dict(r) for r in event_rows],
-                [],
+        v0.7 修正两处口径问题（审计 §3）：
+        1. **分子分母同源**：旧实现成功率用全表 `traces`、工具统计却只取最近
+           1000 条事件，两者不是同一个样本集；现在工具/技能统计都限定在同一批
+           trace_id 内。
+        2. **可按归属与时间窗过滤**：销售只看自己的数据，主管可看全部；
+           `window_hours` 让「最近 24h」这类口径可复现，而不是隐式全表。
+        """
+        cutoff = None
+        if window_hours:
+            cutoff = (datetime.now().astimezone() - timedelta(hours=window_hours)).isoformat(
+                timespec="seconds"
             )
 
-        status_rows, event_rows, _ = await self._run(_aggregate)
+        def _read():
+            where = " WHERE 1=1"
+            params: list[Any] = []
+            if user_id:
+                where += " AND user_id=?"
+                params.append(user_id)
+            if cutoff:
+                where += " AND created_at>=?"
+                params.append(cutoff)
+            with self._conn() as conn:
+                status_rows = [
+                    dict(r) for r in conn.execute(
+                        "SELECT trace_id, status, latency_ms, skill, tool_calls, created_at"
+                        f" FROM traces{where}", tuple(params),
+                    ).fetchall()
+                ]
+                ids = [r["trace_id"] for r in status_rows]
+                event_rows: list[dict[str, Any]] = []
+                # SQLite 变量上限 999，按 500 分批查
+                for i in range(0, len(ids), 500):
+                    chunk = ids[i:i + 500]
+                    marks = ",".join("?" * len(chunk))
+                    event_rows.extend(
+                        dict(r) for r in conn.execute(
+                            "SELECT payload, status, latency_ms, type FROM trace_events"
+                            f" WHERE type='tool_result' AND trace_id IN ({marks})",
+                            tuple(chunk),
+                        ).fetchall()
+                    )
+            return status_rows, event_rows
+
+        status_rows, event_rows = await self._run(_read)
+        traces = await self.list_traces(user_id=user_id, limit=limit)
 
         finished = [r for r in status_rows if r["status"] in ("success", "failed")]
         success = sum(1 for r in finished if r["status"] == "success")
@@ -282,10 +314,7 @@ class TraceStore:
         total = len(finished)
 
         tool_stats: dict[str, dict[str, Any]] = {}
-        skill_counts = {"skill": 0, "tool": 0}
         for row in event_rows:
-            if row["type"] != "tool_result":
-                continue
             try:
                 payload = json.loads(row["payload"] or "{}")
             except json.JSONDecodeError:
@@ -296,7 +325,7 @@ class TraceStore:
                 {"calls": 0, "failed": 0, "avg_ms": 0, "skill": payload.get("skill") or "system", "label": payload.get("label") or name},
             )
             stats["calls"] += 1
-            stats["failed"] += 1 if row["status"] in ("error", "rejected", "denied") else 0
+            stats["failed"] += 1 if row["status"] in ("error", "rejected", "denied", "timeout") else 0
             stats["avg_ms"] += int(row["latency_ms"] or 0)
             stats["label"] = payload.get("label") or stats["label"]
         for stats in tool_stats.values():
@@ -327,6 +356,8 @@ class TraceStore:
                 "failed": failed,
                 "total": total,
                 "running": running,
+                "scope": "all" if not user_id else "self",
+                "window_hours": window_hours,
             },
             "latency": {
                 "p50": percentile(latencies, 0.50),
@@ -443,27 +474,38 @@ class TraceStore:
             if "requester" not in cols:
                 conn.execute("ALTER TABLE approvals ADD COLUMN requester TEXT")
 
-    async def reconcile_stale(self) -> dict[str, int]:
-        """服务启动时收敛上次崩溃遗留的中间态，避免看板/审批长期失真。"""
+    async def reconcile_stale(self, *, include_traces: bool = True) -> dict[str, int]:
+        """服务启动时收敛上次崩溃遗留的中间态。
+
+        注意：**不再把所有 pending 审批一律 cancel**。审批等待态已经持久化
+        （`task_runs.pending_approval_id` + `approvals` 表），重启后用户仍可
+        审批，resume 能接回；如果启动就把单子全 cancel，等于自断恢复路径。
+        这里只把**已过期**的单子标 timeout，其余保留 pending。
+
+        `include_traces=False` 用于多 worker：把 running trace 标 failed 同样只能
+        由一个进程做，否则会误伤其他 worker 正在跑的 Turn。
+        """
         now = now_iso()
 
         def _write() -> tuple[int, int]:
             with self._conn() as conn:
-                traces = conn.execute(
-                    "UPDATE traces SET status='failed', error=COALESCE(error,'server_restart'), finished_at=?"
-                    " WHERE status='running'",
-                    (now,),
-                ).rowcount
+                traces = 0
+                if include_traces:
+                    traces = conn.execute(
+                        "UPDATE traces SET status='failed', error=COALESCE(error,'server_restart'), finished_at=?"
+                        " WHERE status='running'",
+                        (now,),
+                    ).rowcount
                 approvals = conn.execute(
-                    "UPDATE approvals SET status='cancelled', decided_at=?"
-                    " WHERE status='pending'",
-                    (now,),
+                    "UPDATE approvals SET status='timeout', decided_at=?"
+                    " WHERE status='pending' AND expires_at IS NOT NULL AND expires_at < ?",
+                    (now, now),
                 ).rowcount
                 return traces, approvals
 
         async with self._write_lock:
             traces, approvals = await self._run(_write)
-        return {"traces_failed": traces, "approvals_cancelled": approvals}
+        return {"traces_failed": traces, "approvals_expired": approvals}
 
     async def cancel_pending_by_trace(self, trace_id: str) -> None:
         def _write() -> None:

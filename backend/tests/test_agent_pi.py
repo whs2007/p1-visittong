@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401  注册工具
 from app.agent.compaction import compact_if_needed
 from app.agent.events import EventFactory
@@ -21,6 +19,7 @@ from app.sessions.tree import SessionTree, ensure_columns
 from app.skills.registry import registry
 from app.skills.visit_skills import SKILLS
 from app.trace.store import TraceStore
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:

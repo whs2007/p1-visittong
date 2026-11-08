@@ -11,14 +11,13 @@ from __future__ import annotations
 import json
 import sqlite3
 
-import pytest
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401  注册工具
+import pytest
 from app.config import Settings
 from app.domain.db import Database
 from app.domain.tasks import TaskStore
 from app.main import create_app
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:

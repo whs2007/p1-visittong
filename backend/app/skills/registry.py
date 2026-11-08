@@ -1,7 +1,7 @@
 """Tool / Skill 注册表：装饰器注册、Schema 生成、运行时启停、按 Skill 裁剪。"""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from app.config import Settings
@@ -31,6 +31,11 @@ class ToolContext:
     tree: SessionTree
     state: SessionState
     knowledge: Any = None
+    #: 效果级幂等作用域（turn_id:step:call_id）。为 None 时 handler 按原行为执行，
+    #: 因此单测/直调不需要关心它。
+    idem: Any = None
+    #: 本次调用的执行凭证（可观测用：谁、以什么能力集、在哪个技能下调的）
+    contract: dict[str, Any] | None = None
 
     async def remember(self, **entity: str) -> None:
         await self.state.set_entity(self.session_id, {k: v for k, v in entity.items() if v})

@@ -1,4 +1,15 @@
-"""可观测：看板聚合、Trace 明细、治理豁免台账。"""
+"""可观测：看板聚合、Trace 明细、治理台账、指标。
+
+v0.7 的授权修正（审计 §4.2 第 4 点）：
+`/traces`、`/traces/{id}`、`/dashboard/stats` 过去只校验「是否登录」，任一销售
+可以读别人的 Trace（含输入原文、工具参数、审批信息）。现在统一按归属过滤：
+- 列表：销售强制 `user_id=自己`，主管可看全部；
+- 明细：非本人且非主管返回 **404**（不泄露「这条存在」）；
+- 看板：销售只看自己的聚合口径，并在 summary 里标注 `scope`。
+
+治理台账同时从 `governance_events` 查询（结构化），`audit_log` 里旧的
+`channel=manual_override` 记录作为历史兼容并入，不再作为唯一来源。
+"""
 from __future__ import annotations
 
 import json
@@ -8,9 +19,9 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse
 
 from app.api.deps import get_ctx, get_current_user
-from app.auth import ensure_manager
+from app.auth import can_view_trace, ensure_manager, is_manager
 from app.context import AppContext
-from app.errors import ApiError, not_found
+from app.errors import not_found
 from app.skills.visit_skills import skill_catalog
 
 router = APIRouter(prefix="/api", tags=["obs"])
@@ -23,9 +34,24 @@ async def audit_log(
     user: dict[str, Any] = Depends(get_current_user),
 ):
     """操作审计（工具写操作/审批/手工接口），主管可查。"""
-    if user["role"] not in ("manager", "admin"):
-        raise ApiError(403, "FORBIDDEN", "只有主管可以查看操作审计")
+    ensure_manager(user, action="查看操作审计", hint="")
     return {"audit": ctx.db.list_audit(limit)}
+
+
+@router.get("/governance/events")
+async def governance_events(
+    action: str | None = None,
+    limit: int = 100,
+    ctx: AppContext = Depends(get_ctx),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """治理台账：谁改了系统的行为边界（工具启停 / Agent 热更新 / 审批 / 豁免）。"""
+    ensure_manager(user, action="查看治理台账", hint="")
+    store = getattr(ctx, "governance", None)
+    if store is None:
+        return {"events": [], "count": 0}
+    items = store.list_events(action=action, limit=limit)
+    return {"events": items, "count": len(items)}
 
 
 @router.get("/governance/manual-overrides")
@@ -39,9 +65,26 @@ async def manual_overrides(
     把「审批有例外」从一句口头声明变成可举证的数据：每次豁免都有操作者、
     目标、豁免理由与时间戳，可统计、可回放。没有这个视图，「显式豁免」
     和「偷偷开后门」在证据上无法区分。
+
+    数据源已从「grep audit_log 的 JSON 字段」改为 `governance_events`
+    结构化查询（action=plan.cancel.manual），旧记录作为历史兼容并入。
     """
     ensure_manager(user, action="查看治理豁免台账", hint="")
     items: list[dict[str, Any]] = []
+    if getattr(ctx, "governance", None) is not None:
+        for row in ctx.governance.list_events(action="plan.cancel.manual", limit=limit):
+            after = row.get("after") or {}
+            items.append({
+                "actor": row.get("actor"),
+                "action": row.get("action"),
+                "target_id": row.get("target_id"),
+                "owner_id": after.get("owner_id"),
+                "approval": after.get("approval"),
+                "waiver_reason": row.get("reason") or after.get("waiver_reason"),
+                "created_at": row.get("created_at"),
+                "source": "governance_events",
+            })
+    # 历史兼容：v0.6 之前的豁免只写在 audit_log
     for row in ctx.db.list_audit(min(max(limit, 1), 500)):
         try:
             after = json.loads(row.get("after") or "{}")
@@ -57,7 +100,21 @@ async def manual_overrides(
             "approval": after.get("approval"),
             "waiver_reason": after.get("waiver_reason"),
             "created_at": row.get("created_at"),
+            "source": "audit_log",
         })
+    # 去重：v0.7 之后同一次豁免会**同时**写 governance_events 和 audit_log，
+    # 直接拼起来会把豁免数量算成两倍（冒烟 s5 就是被这个卡住的）。
+    # 以 (action, target_id, created_at) 为自然键合并，governance 版本优先
+    # （它带结构化的 reason，比 audit_log 里的 JSON 片段更可信）。
+    merged: dict[tuple[Any, Any, Any], dict[str, Any]] = {}
+    for item in items:
+        key = (item.get("action"), item.get("target_id"), item.get("created_at"))
+        if key in merged and merged[key].get("source") == "governance_events":
+            continue
+        merged[key] = item
+    items = sorted(
+        merged.values(), key=lambda x: str(x.get("created_at") or ""), reverse=True
+    )[:limit]
     return {
         "policy": {
             "scope": "Agent 自主通道的高危动作 100% 进入审批",
@@ -65,7 +122,7 @@ async def manual_overrides(
             "constraints": [
                 "仅 manager/admin",
                 "仍走显式 FSM 迁移表，终态不可取消",
-                "每次豁免强制写审计，含 channel / approval / waiver_reason / owner_id",
+                "每次豁免写入 governance_events（含 actor/target/reason）",
                 "主管可通过本端点拉取全部豁免记录",
             ],
             "rationale": "审批约束模型自主动作；模型不可用时业务不能锁死，故保留高权限人工通道，降级不降权。",
@@ -77,10 +134,13 @@ async def manual_overrides(
 
 @router.get("/dashboard/stats")
 async def dashboard(
+    window_hours: int | None = None,
     ctx: AppContext = Depends(get_ctx),
     user: dict[str, Any] = Depends(get_current_user),
 ):
-    data = await ctx.traces.dashboard(20)
+    """看板：主管看全量，销售只看自己（同一套聚合口径）。"""
+    scope_user = None if is_manager(user) else user["user_id"]
+    data = await ctx.traces.dashboard(20, user_id=scope_user, window_hours=window_hours)
     skill_meta = {s["name"]: s for s in skill_catalog()}
     skills = []
     for name, meta in skill_meta.items():
@@ -89,7 +149,7 @@ async def dashboard(
             {
                 "name": name,
                 "label": meta["label"],
-                "status": "PROD",
+                "status": "ENABLED",
                 "calls": stats.get("calls", 0),
                 "failed": stats.get("failed", 0),
                 "avg_ms": stats.get("avg_ms", 0),
@@ -136,7 +196,13 @@ async def traces(
     ctx: AppContext = Depends(get_ctx),
     user: dict[str, Any] = Depends(get_current_user),
 ):
-    return {"traces": await ctx.traces.list_traces(status=status, skill=skill, limit=limit)}
+    """Trace 列表：销售只能看到自己的，主管可看全部。"""
+    owner = None if is_manager(user) else user["user_id"]
+    return {
+        "traces": await ctx.traces.list_traces(
+            status=status, skill=skill, user_id=owner, limit=limit
+        )
+    }
 
 
 def _scalar(ctx: AppContext, sql: str, params: tuple = ()) -> int:
@@ -154,13 +220,20 @@ def _metrics_snapshot(ctx: AppContext) -> dict[str, Any]:
             "running": _scalar(ctx, "SELECT COUNT(*) FROM traces WHERE status='running'"),
         },
         "tool_executions": _scalar(ctx, "SELECT COUNT(*) FROM tool_executions"),
+        "tool_attempts_unknown": _scalar(
+            ctx, "SELECT COUNT(*) FROM tool_executions WHERE status='unknown'"
+        ),
         "approvals_pending": _scalar(ctx, "SELECT COUNT(*) FROM approvals WHERE status='pending'"),
         "tasks": {
             "done": _scalar(ctx, "SELECT COUNT(*) FROM task_runs WHERE status='done'"),
             "failed": _scalar(ctx, "SELECT COUNT(*) FROM task_runs WHERE status='failed'"),
             "interrupted": _scalar(ctx, "SELECT COUNT(*) FROM task_runs WHERE status='interrupted'"),
+            "awaiting_approval": _scalar(
+                ctx, "SELECT COUNT(*) FROM task_runs WHERE status='awaiting_approval'"
+            ),
         },
         "audit": _scalar(ctx, "SELECT COUNT(*) FROM audit_log"),
+        "governance_events": _scalar(ctx, "SELECT COUNT(*) FROM governance_events"),
         "knowledge_docs": ctx.knowledge.count(),
         "tools": {
             "total": len(ctx.registry.all()),
@@ -177,9 +250,31 @@ async def metrics(
     ctx: AppContext = Depends(get_ctx),
     user: dict[str, Any] = Depends(get_current_user),
 ):
-    if user["role"] not in ("manager", "admin"):
-        raise ApiError(403, "FORBIDDEN", "只有主管可以查看指标")
+    ensure_manager(user, action="查看指标", hint="")
     return _metrics_snapshot(ctx)
+
+
+# (指标名, 类型, 帮助文本)。counter 语义的用 _total，存量/瞬时值用 gauge，
+# 不再出现「名字叫 _total、值是当前条数」这种自相矛盾的暴露方式。
+_PROMETHEUS_SPEC: list[tuple[str, str, str]] = [
+    ("visittong_traces_total", "gauge", "Total traces stored"),
+    ("visittong_traces_failed", "gauge", "Traces in failed state"),
+    ("visittong_traces_running", "gauge", "Traces currently running"),
+    ("visittong_tool_executions_total", "gauge", "Recorded tool executions (idempotency ledger)"),
+    ("visittong_tool_attempts_unknown_total", "gauge", "Tool executions whose effect state is unknown after a crash"),
+    ("visittong_approvals_pending", "gauge", "Approvals waiting for a human decision"),
+    ("visittong_tasks_done_total", "gauge", "Turns finished successfully"),
+    ("visittong_tasks_failed_total", "gauge", "Turns finished with an error"),
+    ("visittong_tasks_interrupted_total", "gauge", "Turns interrupted and resumable"),
+    ("visittong_tasks_awaiting_approval", "gauge", "Turns suspended waiting for approval"),
+    ("visittong_audit_entries_total", "gauge", "Business audit entries"),
+    ("visittong_governance_events_total", "gauge", "Governance ledger entries"),
+    ("visittong_knowledge_docs", "gauge", "Knowledge documents indexed"),
+    ("visittong_tools_total", "gauge", "Registered tools"),
+    ("visittong_tools_enabled", "gauge", "Enabled tools"),
+    ("visittong_tools_write_scope", "gauge", "Tools with write scope"),
+    ("visittong_pipeline_events_total", "gauge", "Ingest pipeline events"),
+]
 
 
 @router.get("/metrics/prometheus")
@@ -187,28 +282,33 @@ async def metrics_prometheus(
     ctx: AppContext = Depends(get_ctx),
     user: dict[str, Any] = Depends(get_current_user),
 ):
-    """Prometheus 文本格式（可被 scrape；无需额外依赖）。"""
-    if user["role"] not in ("manager", "admin"):
-        raise ApiError(403, "FORBIDDEN", "只有主管可以查看指标")
+    """Prometheus 文本格式：带 `# HELP` / `# TYPE`，可被标准 scrape 解析。"""
+    ensure_manager(user, action="查看指标", hint="")
     data = _metrics_snapshot(ctx)
-    lines = []
-    for name, value in (
-        ("visittong_traces_total", data["traces"]["total"]),
-        ("visittong_traces_failed", data["traces"]["failed"]),
-        ("visittong_traces_running", data["traces"]["running"]),
-        ("visittong_tool_executions_total", data["tool_executions"]),
-        ("visittong_approvals_pending", data["approvals_pending"]),
-        ("visittong_tasks_done", data["tasks"]["done"]),
-        ("visittong_tasks_failed", data["tasks"]["failed"]),
-        ("visittong_tasks_interrupted", data["tasks"]["interrupted"]),
-        ("visittong_audit_entries", data["audit"]),
-        ("visittong_knowledge_docs", data["knowledge_docs"]),
-        ("visittong_tools_total", data["tools"]["total"]),
-        ("visittong_tools_enabled", data["tools"]["enabled"]),
-        ("visittong_tools_write_scope", data["tools"]["write"]),
-        ("visittong_pipeline_events", data["pipeline_events"]),
-    ):
-        lines.append(f"{name} {value}")
+    values = {
+        "visittong_traces_total": data["traces"]["total"],
+        "visittong_traces_failed": data["traces"]["failed"],
+        "visittong_traces_running": data["traces"]["running"],
+        "visittong_tool_executions_total": data["tool_executions"],
+        "visittong_tool_attempts_unknown_total": data["tool_attempts_unknown"],
+        "visittong_approvals_pending": data["approvals_pending"],
+        "visittong_tasks_done_total": data["tasks"]["done"],
+        "visittong_tasks_failed_total": data["tasks"]["failed"],
+        "visittong_tasks_interrupted_total": data["tasks"]["interrupted"],
+        "visittong_tasks_awaiting_approval": data["tasks"]["awaiting_approval"],
+        "visittong_audit_entries_total": data["audit"],
+        "visittong_governance_events_total": data["governance_events"],
+        "visittong_knowledge_docs": data["knowledge_docs"],
+        "visittong_tools_total": data["tools"]["total"],
+        "visittong_tools_enabled": data["tools"]["enabled"],
+        "visittong_tools_write_scope": data["tools"]["write"],
+        "visittong_pipeline_events_total": data["pipeline_events"],
+    }
+    lines: list[str] = []
+    for name, kind, help_text in _PROMETHEUS_SPEC:
+        lines.append(f"# HELP {name} {help_text}")
+        lines.append(f"# TYPE {name} {kind}")
+        lines.append(f"{name} {values.get(name, 0)}")
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 
@@ -219,7 +319,8 @@ async def trace_detail(
     user: dict[str, Any] = Depends(get_current_user),
 ):
     trace = await ctx.traces.get_trace(trace_id)
-    if not trace:
+    if not trace or not can_view_trace(user, trace.get("user_id")):
+        # 越权与不存在返回同一个 404：不泄露「这条 Trace 存在」
         raise not_found("TRACE_NOT_FOUND", "Trace 不存在")
     events = await ctx.traces.get_events(trace_id)
     return {"trace": trace, "events": events}

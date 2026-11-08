@@ -8,10 +8,32 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.adapters import asr, crm, notify, poi
+from app.adapters import asr, crm, notify
 from app.domain.fsm import FSM
 from app.skills.registry import ToolContext, ToolResult, registry
-from app.utils import new_id, now_iso
+from app.utils import now_iso
+
+
+# --------------------------------------------------------------------------- #
+# 效果级幂等：写工具的「进入前回放 / 成功后记账」
+#
+# 崩溃窗口（handler 已产生副作用、账本还没写终态）无法靠本地事务消除 ——
+# 副作用可能落在 CRM、短信网关这类没有事务的系统里。这里的做法是：
+#   1) 幂等账本按 (turn_id, step, call_id) 记录完整 ToolResult，重放时直接返回；
+#   2) 业务侧本身有自然唯一性（计划时段冲突、FSM 不允许重复签到/取消），
+#      即使账本停在 running，重复执行也会被业务规则挡住。
+# 两者叠加 = 有效一次（effectively-once），而不是宣称不可能的分布式事务。
+# --------------------------------------------------------------------------- #
+def _replay(ctx: ToolContext) -> ToolResult | None:
+    idem = getattr(ctx, "idem", None)
+    return idem.replay() if idem is not None else None
+
+
+def _remember(ctx: ToolContext, result: ToolResult, resource_id: str = "") -> ToolResult:
+    idem = getattr(ctx, "idem", None)
+    if idem is not None:
+        idem.remember(result, resource_id)
+    return result
 
 
 def plan_payload(plan: dict[str, Any]) -> dict[str, Any]:
@@ -151,6 +173,9 @@ async def query_plans(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     },
 )
 async def create_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    replayed = _replay(ctx)
+    if replayed is not None:
+        return replayed
     slots = await ctx.state.slots(ctx.session_id)
     merged = {**slots, **{k: v for k, v in args.items() if v not in (None, "")}}
     missing = [k for k in ("customer", "planned_at") if not merged.get(k)]
@@ -178,6 +203,21 @@ async def create_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResul
 
     conflict = ctx.db.plan_conflict(ctx.user_id, merged["planned_at"])
     if conflict:
+        idem = getattr(ctx, "idem", None)
+        if idem is not None and getattr(idem, "state", "") == "running" \
+                and conflict.get("owner_id") in (None, ctx.user_id):
+            # 崩溃重放：账本停在 running，但业务表里已经有一条同时段的计划 ——
+            # 那多半就是上一次已经成功的副作用，认领它，不要再建第二条。
+            return _remember(
+                ctx,
+                ToolResult(
+                    "ok",
+                    f"已创建计划：{conflict['customer_name']} · "
+                    f"{conflict.get('store_name') or '未指定门店'} · {conflict['planned_at'][:16]}",
+                    {"card": plan_card(conflict), "plan": plan_payload(conflict), "recovered": True},
+                ),
+                conflict["plan_id"],
+            )
         question = (
             f"{merged['planned_at'][5:16]} 已有计划「{conflict['topic'] or '客户拜访'}」，"
             "换个时间可以吗？（例如 15:00）"
@@ -195,7 +235,11 @@ async def create_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResul
     await ctx.remember(last_plan_id=plan["plan_id"], last_customer_id=customer["customer_id"])
     FSM(ctx.db).create(plan["plan_id"], actor=ctx.user_id, trace_id=ctx.trace_id)
     output = f"已创建计划：{plan['customer_name']} · {plan.get('store_name') or '未指定门店'} · {plan['planned_at'][:16]}"
-    return ToolResult("ok", output, {"card": plan_card(plan), "plan": plan_payload(plan)})
+    return _remember(
+        ctx,
+        ToolResult("ok", output, {"card": plan_card(plan), "plan": plan_payload(plan)}),
+        plan["plan_id"],
+    )
 
 
 @registry.tool(
@@ -214,6 +258,9 @@ async def create_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResul
     },
 )
 async def update_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    replayed = _replay(ctx)
+    if replayed is not None:
+        return replayed
     entity = await ctx.state.entity(ctx.session_id)
     plan = None
     if args.get("plan_id"):
@@ -264,7 +311,11 @@ async def update_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResul
     fsm.plan(plan["plan_id"], "update", actor=ctx.user_id, trace_id=ctx.trace_id)
     await ctx.remember(last_plan_id=updated["plan_id"])
     output = f"已把 {updated['customer_name']} 的计划从 {before['planned_at'][:16]} 改到 {updated['planned_at'][:16]}"
-    return ToolResult("ok", output, {"card": plan_card(updated), "plan": plan_payload(updated), "changes": changes})
+    return _remember(
+        ctx,
+        ToolResult("ok", output, {"card": plan_card(updated), "plan": plan_payload(updated), "changes": changes}),
+        updated["plan_id"],
+    )
 
 
 @registry.tool(
@@ -277,6 +328,9 @@ async def update_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResul
     },
 )
 async def cancel_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    replayed = _replay(ctx)
+    if replayed is not None:
+        return replayed
     plan = None
     if args.get("plan_id"):
         plan = ctx.db.get_plan(args["plan_id"])
@@ -296,7 +350,11 @@ async def cancel_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResul
     if not result.ok:
         return ToolResult("error", f"计划当前状态是 {plan['status']}，不能取消。", {})
     notify.notify(ctx.db, "sms", plan["customer_name"], f"拜访计划取消：{plan['planned_at'][:16]}")
-    return ToolResult("ok", f"已取消 {plan['customer_name']} {plan['planned_at'][:16]} 的拜访计划。", {"card": plan_card({**plan, "status": "cancelled"})})
+    return _remember(
+        ctx,
+        ToolResult("ok", f"已取消 {plan['customer_name']} {plan['planned_at'][:16]} 的拜访计划。", {"card": plan_card({**plan, "status": "cancelled"})}),
+        plan["plan_id"],
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -315,6 +373,9 @@ async def cancel_visit_plan(args: dict[str, Any], ctx: ToolContext) -> ToolResul
     },
 )
 async def checkin(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    replayed = _replay(ctx)
+    if replayed is not None:
+        return replayed
     plan = None
     if args.get("plan_id"):
         plan = ctx.db.get_plan(args["plan_id"])
@@ -349,7 +410,11 @@ async def checkin(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
             {"action_id": "log", "label": "写日志", "skill_name": "visit_log"},
         ],
     }
-    return ToolResult("ok", f"签到成功：{plan['customer_name']}，距离门店 {distance} 米。", {"card": card})
+    return _remember(
+        ctx,
+        ToolResult("ok", f"签到成功：{plan['customer_name']}，距离门店 {distance} 米。", {"card": card}),
+        plan["plan_id"],
+    )
 
 
 @registry.tool(
@@ -362,6 +427,9 @@ async def checkin(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     },
 )
 async def checkout(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    replayed = _replay(ctx)
+    if replayed is not None:
+        return replayed
     plan = None
     if args.get("plan_id"):
         plan = ctx.db.get_plan(args["plan_id"])
@@ -386,7 +454,11 @@ async def checkout(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
         },
         "actions": [{"action_id": "log", "label": "写日志", "skill_name": "visit_log"}],
     }
-    return ToolResult("ok", f"签退成功：{plan['customer_name']}，记得补拜访日志。", {"card": card})
+    return _remember(
+        ctx,
+        ToolResult("ok", f"签退成功：{plan['customer_name']}，记得补拜访日志。", {"card": card}),
+        plan["plan_id"],
+    )
 
 
 @registry.tool(
@@ -405,6 +477,9 @@ async def checkout(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     },
 )
 async def save_visit_log(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    replayed = _replay(ctx)
+    if replayed is not None:
+        return replayed
     summary = (args.get("summary") or "").strip()
     if not summary:
         return ToolResult("need_input", "这次拜访的情况简单说一下？", {"missing": ["summary"], "question": "这次拜访的情况简单说一下？"})
@@ -432,7 +507,11 @@ async def save_visit_log(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
         },
         "actions": [],
     }
-    return ToolResult("ok", f"日志已记录（{log['log_id']}），要点：{summary[:40]}", {"card": card})
+    return _remember(
+        ctx,
+        ToolResult("ok", f"日志已记录（{log['log_id']}），要点：{summary[:40]}", {"card": card}),
+        log["log_id"],
+    )
 
 
 @registry.tool(

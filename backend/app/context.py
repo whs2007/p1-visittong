@@ -4,11 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.adapters.knowledge import build_knowledge
 from app.approvals import ApprovalManager
 from app.config import Settings
 from app.domain.audio import AudioStore
 from app.domain.db import Database
+from app.domain.governance import GovernanceStore
+from app.domain.idempotency import IdempotencyStore
 from app.domain.pipeline import EventPipeline
 from app.domain.tasks import TaskStore
 from app.llm.base import BaseLLM
@@ -38,6 +39,8 @@ class AppContext:
     events: EventPipeline
     session: AgentSession | None = None
     resource_loader: ResourceLoader | None = None
+    idem: IdempotencyStore | None = None
+    governance: GovernanceStore | None = None
     login_failures: dict[str, dict[str, float]] = field(default_factory=dict)
     orchestrator: Orchestrator = field(init=False)
 
@@ -55,4 +58,5 @@ class AppContext:
             tasks=self.tasks,
             knowledge=self.knowledge,
             session=self.session,
+            idem=self.idem,
         )

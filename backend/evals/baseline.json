@@ -1,0 +1,9 @@
+{
+  "cases": 25,
+  "route_accuracy": 1.0,
+  "approval_coverage": 1.0,
+  "forbidden_tool_violations": 0,
+  "case_pass_rate": 1.0,
+  "p95_latency_ms": 996,
+  "skipped_requires_llm": 1
+}

@@ -7,7 +7,8 @@
 
 每一组都调用真实模块做一次计算并打印实测值，而不是复述文档；
 末尾给出对应的 pytest 用例名，便于把「可跑的演示」接到「可回归的测试」。
-设计取舍见 docs/07-Pi-Agent架构对照与优化.md。
+设计取舍的完整推演在本地设计笔记里（不随公开仓库发布）；仓库内可对照 README
+的「架构与目录」「关键机制」两节，以及 tests/ 里对应的用例名。
 """
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ from app.agent.prompt import build_system_prompt  # noqa: E402
 from app.domain.db import Database  # noqa: E402
 from app.domain.tasks import TaskStore  # noqa: E402
 from app.orchestrator.loop import Orchestrator  # noqa: E402
-from app.runtime import AgentSpec, AgentSession, ResourceLoader  # noqa: E402
+from app.runtime import AgentSession, AgentSpec, ResourceLoader  # noqa: E402
 from app.sessions.tree import SessionTree, ensure_columns  # noqa: E402
 from app.skills.registry import registry  # noqa: E402
 from app.skills.visit_skills import SKILLS  # noqa: E402
@@ -335,9 +336,9 @@ def main() -> int:
     )
 
     print(f"\n{LINE}")
-    print("全量回归：cd backend && python -m pytest -q   （86 passed）")
-    print("端到端冒烟：AUTH_MODE=demo python run.py && python scripts/smoke_scenarios.py（7 组）")
-    print("设计取舍与追问清单：docs/07-Pi-Agent架构对照与优化.md §4 / §5")
+    print("全量回归：python -m pytest   （v0.7：115 passed）")
+    print("端到端冒烟：AUTH_MODE=demo python backend/run.py && python backend/scripts/smoke_scenarios.py（7 组）")
+    print("设计取舍与追问清单：README「关键机制」+ 本仓 tests/ 对应用例")
     print(LINE)
     return 0
 

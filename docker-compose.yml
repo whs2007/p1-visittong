@@ -1,0 +1,45 @@
+# 一条命令起全栈：app + redis（会话状态/分布式锁）。
+#
+#   AUTH_SECRET=$(openssl rand -hex 32) docker compose up --build
+#
+# 说明：
+# - sqlite 落在命名卷里，容器重建不丢数据；
+# - app 以 strict 模式运行（demo 模式默认只允许绑本机，容器里会被启动检查拒绝）；
+# - 需要多副本时：docker compose up --scale app=3，
+#   并给除首个副本外的实例设置 RECONCILE_ON_START=0（启动对账只能有一个进程做）。
+services:
+  app:
+    build: .
+    ports:
+      - "8020:8020"
+    environment:
+      AUTH_MODE: strict
+      AUTH_SECRET: ${AUTH_SECRET:?请先设置 AUTH_SECRET（openssl rand -hex 32）}
+      HOST: 0.0.0.0
+      PORT: "8020"
+      REDIS_URL: redis://redis:6379/0
+      SQLITE_PATH: /app/backend/data/app.db
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      RECONCILE_ON_START: "1"
+    volumes:
+      - app-data:/app/backend/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  redis-data:

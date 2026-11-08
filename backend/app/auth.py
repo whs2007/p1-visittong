@@ -57,8 +57,24 @@ def _unb64(text: str) -> bytes:
 
 
 def create_token(user: dict[str, Any], secret: str, ttl_hours: int) -> tuple[str, int]:
+    """签发 Token。
+
+    payload 带三类声明：
+    - `sub` / `role`：身份与角色（角色仅用于展示，授权判定始终回查 DB）；
+    - `exp`：过期时间；
+    - `jti` + `tv`：**可撤销性**。`jti` 让「登出」立即失效单个 token（写入
+      `revoked_tokens`）；`tv` 是用户级 token 版本号，改密/强制下线时 +1，
+      该用户此前签发的所有 token 一起失效 —— 旧实现只有 HMAC + exp，
+      签发后无法收回，属于审计里的「无撤销」缺口。
+    """
     exp = int(time.time()) + ttl_hours * 3600
-    payload = {"sub": user["user_id"], "role": user["role"], "exp": exp}
+    payload = {
+        "sub": user["user_id"],
+        "role": user["role"],
+        "exp": exp,
+        "jti": secrets.token_urlsafe(12),
+        "tv": int(user.get("token_epoch") or 0),
+    }
     body = _b64(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     signature = _b64(hmac.new(secret.encode("utf-8"), body.encode("ascii"), hashlib.sha256).digest())
     return f"{body}.{signature}", exp
@@ -78,6 +94,33 @@ def decode_token(token: str, secret: str) -> dict[str, Any] | None:
     if not payload.get("sub"):
         return None
     return payload
+
+
+def _is_revoked(db: Any, jti: str, expires_at: str) -> bool:
+    """token 是否已被撤销。表不存在（老库未迁移）时按未撤销处理。"""
+    if not jti:
+        return False
+    try:
+        conn = db._conn()  # noqa: SLF001
+        row = conn.execute(
+            "SELECT 1 FROM revoked_tokens WHERE jti=?", (jti,)
+        ).fetchone()
+        return row is not None
+    except Exception:  # noqa: BLE001 - 迁移未执行 / 表不存在
+        return False
+
+
+def revoke_token(db: Any, *, jti: str, user_id: str, expires_at: str) -> None:
+    try:
+        conn = db._conn()  # noqa: SLF001
+        conn.execute(
+            "INSERT OR IGNORE INTO revoked_tokens (jti, user_id, expires_at, revoked_at)"
+            " VALUES (?,?,?,?)",
+            (jti, user_id, expires_at, time.strftime("%Y-%m-%dT%H:%M:%S%z")),
+        )
+        conn.commit()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # --------------------------------------------------------------------------- #
@@ -111,6 +154,15 @@ async def get_current_user(
         user = ctx.db.get_user(payload["sub"])
         if not user:
             raise ApiError(401, "UNAUTHORIZED", "用户不存在")
+        # 1) 单 token 撤销（登出）
+        if _is_revoked(ctx.db, str(payload.get("jti") or ""), str(payload.get("exp") or "")):
+            raise ApiError(401, "TOKEN_REVOKED", "该 Token 已登出失效，请重新登录")
+        # 2) 用户级版本号（改密 / 强制下线）
+        current_tv = int(user.get("token_epoch") or 0)
+        if int(payload.get("tv") or 0) != current_tv:
+            raise ApiError(401, "TOKEN_STALE", "登录状态已失效（密码变更或强制下线），请重新登录")
+        request.state.token_jti = payload.get("jti")
+        request.state.token_exp = payload.get("exp")
         return _public_user(user)
 
     if settings.auth_mode == "demo":
@@ -148,6 +200,21 @@ def ensure_manager(
     if user["role"] not in ("manager", "admin"):
         suffix = hint if hint is not None else "；销售请通过对话发起，由主管审批"
         raise ApiError(403, "MANAGER_ONLY", f"只有主管可以{action}{suffix}")
+
+
+def is_manager(user: dict[str, Any]) -> bool:
+    return user.get("role") in ("manager", "admin")
+
+
+def can_view_trace(user: dict[str, Any], owner_id: str | None) -> bool:
+    """Trace 的可见性：本人或主管。
+
+    与 `ensure_owner_or_manager` 的区别在**拒绝时的语义**：Trace 明细里含
+    输入原文、工具参数、审批信息，越权读取应当返回 404（不泄露「这条存在」），
+    而不是 403（等于告诉对方「有这个东西但你不能看」）。所以这里只做布尔
+    判定，由路由决定返回什么码。
+    """
+    return is_manager(user) or (owner_id is not None and user["user_id"] == owner_id)
 
 
 def ensure_can_decide(user: dict[str, Any], approval: dict[str, Any]) -> None:

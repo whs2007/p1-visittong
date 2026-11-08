@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # 测试环境显式允许默认密钥（应用在 strict 模式下默认拒绝启动）
+      AUTH_ALLOW_INSECURE_SECRET: "1"
+      AUTH_MODE: strict
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.lock
+
+      - name: Install (locked)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r backend/requirements.lock
+          # 只额外装 lint 工具；pytest / pytest-asyncio 来自 lock，
+          # 不在这里 `pip install pytest`（那会把测试框架升到 lock 之外，
+          # 锁定就名存实亡，而且历史上正是这种漂移让 asyncio_mode 生效与否随环境变）。
+          pip install ruff
+
+      - name: Dependency audit (advisory)
+        run: |
+          pip install pip-audit
+          # 第三方漏洞公告更新频繁，这里只做可见化，不阻断构建；
+          # 需要强制时把最后一行改成 `pip-audit ... --strict`。
+          pip-audit -r backend/requirements.lock || true
+
+      # 下面五步 = backend/scripts/verify_all.py 的五个环节，顺序与参数保持一致
+      # （分步是为了在 GitHub 上直接看出哪一环红了；改门禁请先改 verify_all.py）
+      - name: Lint
+        run: python -m ruff check backend
+
+      - name: Unit & integration tests
+        run: python -m pytest
+
+      - name: Behavior eval (regression gate)
+        run: |
+          # baseline 是「已评审的期望水位」，必须随仓库提交。
+          # 缺失即视为门禁失效：绝不能在 CI 里临时生成一份再来比，那是自己给自己发合格证。
+          if [ ! -f backend/evals/baseline.json ]; then
+            echo "backend/evals/baseline.json 缺失：本地跑 make eval-update 生成并提交后重试"
+            exit 1
+          fi
+          python backend/scripts/run_eval.py
+
+      - name: End-to-end smoke
+        run: python backend/scripts/smoke_scenarios.py --serve
+
+      - name: Crash injection (exactly-once)
+        run: python backend/scripts/chaos_resume.py
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: backend/data/_eval_report.json
+          if-no-files-found: ignore
+
+      - name: Cleanup test data
+        if: always()
+        run: python backend/scripts/clean_test_data.py

@@ -11,15 +11,14 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401
+import pytest
 from app.adapters.knowledge import LocalKnowledge, build_knowledge, cosine, embed, sync_knowledge
 from app.config import Settings
 from app.domain.db import Database
 from app.domain.pipeline import EventPipeline
 from app.main import create_app
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:

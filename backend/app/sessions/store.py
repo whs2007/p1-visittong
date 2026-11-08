@@ -35,6 +35,7 @@ class SessionState:
         self._slots: dict[str, dict[str, str]] = {}
         self._entity: dict[str, dict[str, str]] = {}
         self._locks: set[str] = set()
+        self._lock_owner: dict[str, str] = {}
         self._guard = asyncio.Lock()
         self._redis: Any = None
         self.backend_reason: str = ""
@@ -150,20 +151,38 @@ class SessionState:
             self._entity.setdefault(session_id, {}).update(entity)
 
     # ------------------------------------------------------------------ #
-    # 并发锁
+    # 并发锁（owner token + Lua 校验删除）
     # ------------------------------------------------------------------ #
-    async def try_lock(self, session_id: str) -> bool:
+    async def try_lock(self, session_id: str, owner: str | None = None) -> bool:
+        """获取会话锁。
+
+        旧实现 `SET nx ex=60` + `DELETE`：A 超时后 B 拿到锁，A 结束时会把 **B 的锁**
+        删掉；且 60s TTL 短于 120s 审批超时，长审批期间锁已失效。
+        v0.7：值为 owner token，TTL 覆盖「审批超时 + 余量」，释放时用 Lua 校验
+        owner 才删除 —— 只会释放自己持有的锁。
+        """
+        token = owner or new_id("lock")
+        ttl = int(self.settings.approval_timeout_s + 300)
         if self._redis:
-            return bool(await self._redis.set(f"sess:{session_id}:lock", "1", nx=True, ex=60))
+            ok = await self._redis.set(f"sess:{session_id}:lock", token, nx=True, ex=ttl)
+            if ok:
+                self._lock_owner[session_id] = token
+            return bool(ok)
         async with self._guard:
             if session_id in self._locks:
                 return False
             self._locks.add(session_id)
+            self._lock_owner[session_id] = token
             return True
 
     async def unlock(self, session_id: str) -> None:
+        owner = self._lock_owner.pop(session_id, None)
         if self._redis:
-            await self._redis.delete(f"sess:{session_id}:lock")
+            # 只删自己持有的锁；不是自己的就让它自然过期
+            await self._redis.eval(
+                "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+                1, f"sess:{session_id}:lock", owner or "",
+            )
             return
         async with self._guard:
             self._locks.discard(session_id)

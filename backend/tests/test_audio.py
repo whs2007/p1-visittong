@@ -3,14 +3,13 @@ from __future__ import annotations
 
 import json
 
-import pytest
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401
+import pytest
 from app.adapters import asr
 from app.agent.minutes import generate_minutes, render_markdown
 from app.config import Settings
 from app.main import create_app
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:
@@ -97,10 +96,10 @@ def test_transcribe_tool_returns_minutes(tmp_path) -> None:
     """通过注册表直接调用工具，验证 ASR + 纪要数据契约。"""
     import asyncio
 
-    from app.skills.registry import ToolContext, registry
+    from app.domain.db import Database
     from app.sessions.store import SessionState
     from app.sessions.tree import SessionTree
-    from app.domain.db import Database
+    from app.skills.registry import ToolContext, registry
 
     settings = make_settings(tmp_path)
     db = Database(settings.sqlite_path)

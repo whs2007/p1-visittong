@@ -3,12 +3,11 @@ from __future__ import annotations
 
 import json
 
-import pytest
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401
+import pytest
 from app.config import Settings
 from app.main import create_app
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:
@@ -90,3 +89,46 @@ def test_trace_list_filter(client) -> None:
 def test_audit_search_requires_manager(client, manager_client) -> None:
     assert client.get("/api/audit").status_code == 403
     assert manager_client.get("/api/audit", params={"limit": 10}).status_code == 200
+
+def test_request_id_header_is_echoed_and_generated(client) -> None:
+    """`X-Request-Id` 要能「传进来就沿用、没传就生成」——用户报障时才对得齐日志行。"""
+    echoed = client.get("/api/health", headers={"X-Request-Id": "abc123"})
+    assert echoed.status_code == 200
+    assert echoed.headers["X-Request-Id"] == "abc123"
+    assert echoed.headers["X-Elapsed-Ms"].isdigit()
+
+    generated = client.get("/api/health")
+    rid = generated.headers["X-Request-Id"]
+    assert rid and rid != "abc123" and len(rid) >= 8
+
+
+def test_prometheus_exposition_declares_help_and_type(manager_client) -> None:
+    """Prometheus 文本格式要求每个指标都有 HELP/TYPE；缺了采集端只会当成 untyped。"""
+    text = manager_client.get("/api/metrics/prometheus").text
+    names = {
+        line.split()[0].split("{")[0]
+        for line in text.splitlines()
+        if line and not line.startswith("#")
+    }
+    assert names, "指标为空"
+    for name in names:
+        assert f"# HELP {name} " in text, f"{name} 缺少 HELP"
+        assert f"# TYPE {name} " in text, f"{name} 缺少 TYPE"
+    assert text.endswith("\n")
+
+
+def test_cors_is_deny_by_default(client) -> None:
+    """未配置 ALLOWED_ORIGINS 时，不让任何跨域来源拿到 CORS 响应头。
+
+    旧默认是 `"*"` 且 `allow_credentials=True`：等于任意站点都能带凭据调接口。
+    前端与后端同源，本就不需要 CORS；分离开发时显式配白名单。
+    """
+    response = client.get("/api/health", headers={"Origin": "https://evil.example"})
+    assert "access-control-allow-origin" not in {k.lower() for k in response.headers}
+
+
+def test_cors_whitelist_allows_configured_origin(tmp_path) -> None:
+    app = create_app(make_settings(tmp_path, allowed_origins="http://127.0.0.1:5173"))
+    with TestClient(app) as c:
+        response = c.get("/api/health", headers={"Origin": "http://127.0.0.1:5173"})
+        assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"

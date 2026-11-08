@@ -12,16 +12,15 @@ from __future__ import annotations
 import asyncio
 import json
 
-import pytest
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401
+import pytest
 from app.config import Settings
 from app.domain.db import Database
 from app.llm.base import BaseLLM, LLMChunk
 from app.llm.mock import MockLLM
 from app.main import create_app
 from app.orchestrator.router import route_text_hybrid
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:

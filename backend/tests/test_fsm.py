@@ -10,15 +10,14 @@ from __future__ import annotations
 
 import json
 
-import pytest
-from fastapi.testclient import TestClient
-
 import app.skills.tools  # noqa: F401  注册工具
+import pytest
 from app.config import Settings
 from app.domain.db import Database
 from app.domain.fsm import FSM, PLAN_TRANSITIONS, SessionFSM
 from app.main import create_app
 from app.sessions.store import SessionState
+from fastapi.testclient import TestClient
 
 
 def make_settings(tmp_path, **overrides) -> Settings:

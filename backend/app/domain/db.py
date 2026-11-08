@@ -9,8 +9,8 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
-from app.utils import new_id, now_iso
 from app.auth import hash_password
+from app.utils import new_id, now_iso
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -700,9 +700,13 @@ class Database:
 
     def plan_conflict(self, owner_id: str, planned_at: str, exclude_plan_id: str | None = None) -> dict[str, Any] | None:
         day = planned_at[:10]
+        # 返回**完整计划行**（与 get_plan/list_plans 同构）：调用方要拿它给用户
+        # 回话、拼卡片、甚至在崩溃恢复时直接认领这条已存在的计划。之前只
+        # SELECT 三列，`customer_name` 之类字段在认领分支里会 KeyError —— 副作用
+        # 明明已经成功，恢复却报 error（chaos_resume 打到 65ms 偏移时暴露的）。
         rows = self._rows(
-            "SELECT plan_id, planned_at, topic FROM visit_plans"
-            " WHERE owner_id=? AND planned_at LIKE ? AND status IN ('planned','checked_in')",
+            self.PLAN_SELECT
+            + " WHERE p.owner_id=? AND p.planned_at LIKE ? AND p.status IN ('planned','checked_in')",
             (owner_id, f"{day}%"),
         )
         target = planned_at[:16]

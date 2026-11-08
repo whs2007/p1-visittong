@@ -8,18 +8,17 @@ from __future__ import annotations
 import asyncio
 import json
 
-import pytest
-
 import app.skills.tools  # noqa: F401  确保内置工具已注册到全局 registry
+import pytest
 from app.agent.events import EventFactory
 from app.agent.hooks import ToolCall
-from app.api import routes_agents, routes_chat
-from app.errors import ApiError
 from app.agent.pipeline import ToolPipeline
+from app.api import routes_agents, routes_chat
 from app.approvals import ApprovalManager
 from app.config import Settings
 from app.domain.db import Database
 from app.domain.tasks import TaskStore
+from app.errors import ApiError
 from app.orchestrator.loop import Orchestrator
 from app.orchestrator.router import route_card, route_text_hybrid
 from app.policy.engine import PolicyEngine

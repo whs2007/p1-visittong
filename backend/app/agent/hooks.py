@@ -4,14 +4,16 @@ Pi 的扩展可以：
   - 在 tool_call 阶段拦截（block）、改写参数；
   - 在 tool_result 阶段审计、改写结果。
 P1 保留两个等价扩展点（进程内注册，不做动态加载）：
-  - before_tool_call(call) -> HookDecision | None：返回非 None 即短路；
+  - before_tool_call(call) -> HookDecision | None：返回判定，**与 PolicyEngine
+    的判定取最严**（deny > approval > allow）。v0.7 之前「返回非 None 即短路」
+    会让一个扩展点关掉核心安全策略（审计 A3），已修正；
   - after_tool_result(call, outcome) -> ToolOutcome | None：可替换结果（审计/脱敏）。
 钩子异常只记日志，不影响主链路。
 """
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 log = logging.getLogger(__name__)

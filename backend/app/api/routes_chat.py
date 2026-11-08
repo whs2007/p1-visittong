@@ -161,9 +161,18 @@ async def chat_stream(
 @router.post("/cards/action")
 async def card_action(
     body: CardActionBody,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     ctx: AppContext = Depends(get_ctx),
     user: dict[str, Any] = Depends(get_current_user),
 ):
+    """卡片动作（点击「改约 / 签到 / 取消」等按钮）。
+
+    卡片动作**可能是写操作**，所以与 `/chat/stream` 一样支持 `Idempotency-Key`：
+    前端双击、网络重试、移动端弱网重发都不应该产生第二个 Turn。
+    """
+    if idempotency_key:
+        if not ctx.db.reserve_idempotency(idempotency_key, user["user_id"], body.session_id):
+            raise conflict("DUPLICATE_REQUEST", "重复请求：该 Idempotency-Key 已处理")
     await _prepare(ctx, body.session_id, user)
     card = {
         "card_name": body.card_name,
@@ -198,8 +207,17 @@ async def task_detail(
         # 把「为什么不能续跑」变成可查询的数据，而不只是 409 里的一句提示
         "resume_compat": ctx.orchestrator.check_resume_compat(checkpoint or {}),
         "tool_executions": ctx.tasks.tool_count(turn_id),
+        # 审批断点：重启后被中断的任务仍然挂着「在等哪张单」，可据此接回
+        "pending_approval": (
+            None if not task.get("pending_approval_id") else {
+                "approval_id": task["pending_approval_id"],
+                "step": task.get("pending_step"),
+                "call_id": task.get("pending_call_id"),
+                "tool": task.get("pending_tool"),
+            }
+        ),
         "resumable": (
-            task["status"] == "interrupted"
+            task["status"] in ("interrupted", "awaiting_approval")
             and checkpoint is not None
             and ctx.orchestrator.check_resume_compat(checkpoint)["status"] != "incompatible"
         ),
@@ -217,8 +235,8 @@ async def resume_task(
     if not task:
         raise not_found("TASK_NOT_FOUND", "任务不存在")
     ensure_owner_or_manager(user, task["user_id"])
-    if task["status"] != "interrupted":
-        raise conflict("TASK_NOT_INTERRUPTED", f"任务状态是 {task['status']}，只有 interrupted 可恢复")
+    if task["status"] not in ("interrupted", "awaiting_approval"):
+        raise conflict("TASK_NOT_INTERRUPTED", f"任务状态是 {task['status']}，只有 interrupted/awaiting_approval 可恢复")
     checkpoint = ctx.tasks.latest_checkpoint(turn_id)
     if not checkpoint:
         raise conflict("TASK_NO_CHECKPOINT", "没有可用检查点，无法恢复")
@@ -276,4 +294,15 @@ async def decide_approval(
         target_type="approval", target_id=approval_id,
         after={"decision": body.decision, "reason": body.reason or ""},
     )
+    if getattr(ctx, "governance", None) is not None:
+        ctx.governance.record(
+            action=f"approval.{body.decision}",
+            actor=user["user_id"], actor_role=str(user.get("role") or ""),
+            target_type="approval", target_id=approval_id,
+            before={"status": "pending", "tool": approval.get("tool"),
+                    "requester": approval.get("requester")},
+            after={"status": body.decision},
+            reason=body.reason or "",
+            trace_id=str(approval.get("trace_id") or ""),
+        )
     return {"approval_id": approval_id, "decision": body.decision}

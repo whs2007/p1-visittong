@@ -1,10 +1,14 @@
 """P1 测试夹具：绕开沙箱受限的系统临时目录，把 tmp_path 指到工作区内。"""
 from __future__ import annotations
 
+import os
 import uuid
 from pathlib import Path
 
 import pytest
+
+# 测试用默认 AUTH_SECRET（进程启动即会检查；显式开关表示「我知道这是测试环境」）
+os.environ.setdefault("AUTH_ALLOW_INSECURE_SECRET", "1")
 
 _BASE = Path(__file__).resolve().parents[1] / "data" / "_pytest"
 

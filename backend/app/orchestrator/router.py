@@ -126,6 +126,11 @@ def build_slots(db: Database, text: str) -> dict[str, Any]:
     planned_at = parse_time(text)
     if planned_at:
         slots["planned_at"] = planned_at
+    # 「我到店了，距离大概 1200 米」里的距离必须被抽出来，否则签到永远按默认
+    # 320 米走，远处的补签就绕过了审批。这是业务规则，不是模型该猜的。
+    distance = re.search(r"(\d{1,5})\s*(?:米|m\b|M\b)", text)
+    if distance:
+        slots["distance_m"] = int(distance.group(1))
     store = match_store(db, text)
     if store:
         slots["store"] = store["name"]

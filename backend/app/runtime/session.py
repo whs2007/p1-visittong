@@ -15,6 +15,7 @@ from app.agent.prompt import build_system_prompt, skill_path
 from app.skills.registry import ToolRegistry, ToolSpec
 
 if TYPE_CHECKING:
+    from app.runtime.contract import ExecutionContract
     from app.runtime.loader import ResourceLoader
     from app.runtime.spec import AgentSpec
     from app.skills.visit_skills import SkillSpec
@@ -81,10 +82,71 @@ class AgentSession:
     def allows_skill(self, name: str) -> bool:
         return name == "chat" or name in self._skills
 
+    def authorized_tools(self) -> frozenset[str]:
+        """装配期授权的工具全集（已注册 + 归属已授权 Skill + 白名单内）。"""
+        return frozenset(authorized_tool_names(self.spec, self._skills, self.registry))
+
     def allows_tool(self, name: str) -> bool:
-        if self.spec.tools is None:
-            return True
-        return name in self.spec.tools
+        """Agent 级能力边界。
+
+        v0.7 起不再是「配置里没写白名单就一律放行」：判定集合统一为
+        `authorized_tool_names()`，因此默认 `visit` 下**根本不存在**的工具名
+        （模型幻觉 / 提示词注入造出来的名字）会被拒绝。之前
+        `spec.tools is None -> True` 让默认装配的 guard 对未知工具恒真，
+        这是审计里点名的一条「名不副实」。
+        """
+        return name in self.authorized_tools()
+
+    def guard(self, contract: "ExecutionContract") -> tuple[bool, str, str]:
+        """执行期硬校验（凭证版）：三条同时成立才放行。
+
+        见 `guard_tool` 的说明；这里只是把凭证里的两个字段取出来。
+        """
+        return self.guard_tool(contract.tool_name, contract.active_skill)
+
+    def guard_tool(self, tool_name: str, active_skill: str) -> tuple[bool, str, str]:
+        """执行期硬校验：三条同时成立才放行。
+
+        (1) 当前 Skill 已授权给本 Agent；
+        (2) 工具**归属**当前 Skill（不是只看 Agent 级白名单 —— 否则模型在
+            `visit_log` 技能里调 `cancel_visit_plan` 也能通过，审计 §4.2 第 3 点）；
+        (3) 工具在装配授权集内（含已注册）且当前未被主管停用。
+
+        返回 (ok, rule, reason)。rule 会写进 Trace 与治理台账，便于事后统计
+        「拦住了什么」，而不是只留一句自然语言。
+        """
+        if not self.allows_skill(active_skill):
+            return (
+                False,
+                "skill_not_authorized",
+                f"技能 {active_skill} 未授权给 Agent {self.name}",
+            )
+        tool = self.registry.get(tool_name)
+        if tool is None:
+            return (
+                False,
+                "tool_not_registered",
+                f"工具 {tool_name} 不存在（未注册）",
+            )
+        if tool.skill and tool.skill != active_skill:
+            return (
+                False,
+                "cross_skill_denied",
+                f"工具 {tool.name} 归属技能 {tool.skill}，当前技能是 {active_skill}",
+            )
+        if tool.name not in self.authorized_tools():
+            return (
+                False,
+                "not_in_agent_capability",
+                f"工具 {tool.name} 不在 Agent {self.name} 的能力白名单内",
+            )
+        if not tool.enabled:
+            return (
+                False,
+                "tool_disabled",
+                f"工具 {tool.name} 已被主管停用",
+            )
+        return True, "allowed", ""
 
     def label_of(self, skill: str) -> str:
         spec = self._skills.get(skill)

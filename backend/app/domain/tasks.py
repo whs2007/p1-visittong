@@ -70,10 +70,19 @@ class TaskStore:
         self.update(turn_id, **fields)
 
     def reconcile_interrupted(self) -> int:
-        """服务启动时把上次崩溃遗留的 running 任务标为 interrupted（可 resume）。"""
+        """服务启动时把上次崩溃遗留的在途任务标为 interrupted（可 resume）。
+
+        包含 `awaiting_approval`：等审批时进程被杀，任务同样是在途任务。
+        `pending_approval_id` 等字段**保留**，resume 时据此判断「单子已经被
+        批了」还是「还没人处理」，从而接回审批断点而不是重跑整个 ReAct。
+        """
         now = now_iso()
         with self.db._conn() as conn:  # noqa: SLF001
-            rows = conn.execute("UPDATE task_runs SET status='interrupted', updated_at=? WHERE status='running'", (now,)).rowcount
+            rows = conn.execute(
+                "UPDATE task_runs SET status='interrupted', updated_at=?"
+                " WHERE status IN ('running','awaiting_approval')",
+                (now,),
+            ).rowcount
         return rows
 
     # ------------------------------------------------------------------ #
@@ -150,3 +159,86 @@ class TaskStore:
             self.db._conn().execute("SELECT COUNT(*) AS n FROM tool_executions WHERE turn_id=?", (turn_id,)).fetchone()  # noqa: SLF001
         )
         return int(row["n"]) if row else 0
+
+    # ------------------------------------------------------------------ #
+    # 工具执行：先声明后执行（at-most-once claim）
+    # ------------------------------------------------------------------ #
+    def claim_tool(
+        self, *, turn_id: str, step: int, call_id: str, name: str
+    ) -> dict[str, Any] | None:
+        """执行前声明一次工具调用，返回**已存在**的记录（若有）。
+
+        为什么先声明、且立刻提交：handler 里可能有外部副作用（CRM 写、短信、
+        未来的 HTTP 调用），它们不参与本地事务。先落一条 `running` 记录，
+        崩溃后这条记录就是「副作用状态未知」的显式证据，resume 时能据此
+        走对账路径，而不是当作「没执行过」盲目重放。
+
+        幂等键是 (turn_id, step, call_id)，与 ExecutionContract.idem_key 同源。
+        """
+        self.db._exec(  # noqa: SLF001
+            "INSERT OR IGNORE INTO tool_executions"
+            " (turn_id,step,call_id,name,status,output,data,created_at,attempt)"
+            " VALUES (?,?,?,?,?,?,?,?,?)",
+            (turn_id, step, call_id, name, "running", "", "{}", now_iso(), 1),
+        )
+        row = self.saved_tool(turn_id, step, call_id)
+        if row and row.get("status") == "unknown":
+            # 上次崩溃留下的「状态未知」：重试时重新置为 running 并累计尝试次数，
+            # 这样账本里能看出「这条副作用被重试过」。
+            self.db._exec(  # noqa: SLF001
+                "UPDATE tool_executions SET status='running', attempt=COALESCE(attempt,1)+1"
+                " WHERE turn_id=? AND step=? AND call_id=?",
+                (turn_id, step, call_id),
+            )
+            row = self.saved_tool(turn_id, step, call_id)
+        return row
+
+    def complete_tool(
+        self, *, turn_id: str, step: int, call_id: str, status: str,
+        output: str, data: dict[str, Any] | None,
+    ) -> None:
+        """把声明行推进到终态（不再用 INSERT OR IGNORE，避免静默丢弃结果）。"""
+        self.db._exec(  # noqa: SLF001
+            "UPDATE tool_executions SET status=?, output=?, data=?"
+            " WHERE turn_id=? AND step=? AND call_id=?",
+            (
+                status, output, json.dumps(data or {}, ensure_ascii=False),
+                turn_id, step, call_id,
+            ),
+        )
+
+    def reconcile_tool_attempts(self) -> dict[str, Any]:
+        """启动对账：把遗留的 `running` 标记为 `unknown`，返回明细。
+
+        在「先声明后执行 + 效果级幂等」的设计下，`running` 残留意味着上一个
+        进程在副作用执行期间死亡（可能已生效，也可能没有）。这里不猜测：
+        标成 `unknown` 并保留，恢复时由幂等账本 / FSM 决定是回放还是重跑，
+        同时暴露给 `/api/metrics`，让「悬空执行」是可观测的，而不是静默漂移。
+        """
+        rows = self.db._rows(  # noqa: SLF001
+            "SELECT turn_id, step, call_id, name FROM tool_executions WHERE status='running'"
+        )
+        if rows:
+            self.db._exec(  # noqa: SLF001
+                "UPDATE tool_executions SET status='unknown' WHERE status='running'"
+            )
+        return {"count": len(rows), "items": rows}
+
+    # ------------------------------------------------------------------ #
+    # 审批等待态（Durable Execution 覆盖 HITL）
+    # ------------------------------------------------------------------ #
+    def mark_awaiting(
+        self, *, turn_id: str, approval_id: str, step: int, call_id: str, tool: str
+    ) -> None:
+        self.db._exec(  # noqa: SLF001
+            "UPDATE task_runs SET pending_approval_id=?, pending_step=?, pending_call_id=?,"
+            " pending_tool=?, status='awaiting_approval', updated_at=? WHERE turn_id=?",
+            (approval_id, step, call_id, tool, now_iso(), turn_id),
+        )
+
+    def clear_awaiting(self, turn_id: str, status: str = "running") -> None:
+        self.db._exec(  # noqa: SLF001
+            "UPDATE task_runs SET pending_approval_id=NULL, pending_step=NULL,"
+            " pending_call_id=NULL, pending_tool=NULL, status=?, updated_at=? WHERE turn_id=?",
+            (status, now_iso(), turn_id),
+        )
