@@ -101,20 +101,25 @@ class ApprovalManager:
             self._waiters.pop(approval_id, None)
             self._meta.pop(approval_id, None)
 
-    async def decide(self, approval_id: str, decision: str, reason: str = "", approver: str = "") -> str:
-        """返回 ok / not_found / already_decided。"""
-        row = await self.traces.get_approval(approval_id)
-        if not row:
-            return "not_found"
-        if row["status"] != "pending":
-            return "already_decided"
-        ok = await self.traces.decide_approval(approval_id, decision, reason, approver)
-        if not ok:
-            return "already_decided"
-        event = self._waiters.get(approval_id)
-        if event:
-            event.set()
-        return "ok"
+    async def decide(
+        self, approval_id: str, decision: str, reason: str = "", approver: str = "",
+        nonce: str | None = None,
+    ) -> str:
+        """返回 ok / not_found / already_decided / token_missing / token_invalid。
+
+        判定全部下沉到 `TraceStore.decide_approval` 的一次 CAS 里：先查后改会留出
+        一个 TOCTOU 窗口，两个主管同时点「批准」时都通过前置检查、都去改状态。
+        v0.9 起多一个条件：**一次性令牌必须匹配且未使用**——令牌不匹配说明
+        请求本身不可信（不是同一张单、或前端拿了旧单），与「已被处理」分开报。
+        """
+        result = await self.traces.decide_approval(
+            approval_id, decision, reason, approver=approver, nonce=nonce,
+        )
+        if result == "ok":
+            event = self._waiters.get(approval_id)
+            if event:
+                event.set()
+        return result
 
     async def cancel_by_trace(self, trace_id: str) -> None:
         """客户端断连等场景：把所有等待者标 cancelled，避免协程泄漏。"""

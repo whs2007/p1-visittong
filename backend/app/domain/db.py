@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS traces (
   tool_calls  INTEGER DEFAULT 0,
   tokens_in   INTEGER DEFAULT 0,
   tokens_out  INTEGER DEFAULT 0,
+  cost_usd    REAL DEFAULT 0,
   error       TEXT,
   created_at  TEXT NOT NULL,
   finished_at TEXT
@@ -167,6 +168,8 @@ CREATE TABLE IF NOT EXISTS approvals (
   status          TEXT NOT NULL,
   approver        TEXT,
   decision_reason TEXT,
+  decision_nonce  TEXT,
+  nonce_used_at   TEXT,
   created_at      TEXT NOT NULL,
   decided_at      TEXT,
   expires_at      TEXT
@@ -287,6 +290,8 @@ CREATE TABLE IF NOT EXISTS knowledge_docs (
   title      TEXT NOT NULL,
   text       TEXT NOT NULL,
   vector     TEXT,
+  source_version INTEGER DEFAULT 0,
+  deleted_at TEXT,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_knowledge_kind ON knowledge_docs(kind);
@@ -301,6 +306,37 @@ CREATE TABLE IF NOT EXISTS ingest_events (
   processed_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ingest_status ON ingest_events(status, created_at);
+
+-- 工具输出引用化：超长输出落这里，上下文只留 ref + 首尾。
+-- 存的是**脱敏后**全文（PII 最小化留存），sha256 用于校验「回查到的就是注入的那段」。
+CREATE TABLE IF NOT EXISTS tool_outputs (
+  ref         TEXT PRIMARY KEY,
+  trace_id    TEXT,
+  session_id  TEXT,
+  user_id     TEXT,
+  tool        TEXT,
+  content     TEXT NOT NULL,
+  sha256      TEXT NOT NULL,
+  chars       INTEGER DEFAULT 0,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tool_outputs_trace ON tool_outputs(trace_id);
+
+-- 死信队列：consumer 重试耗尽的事件进这里，可人工/接口重放。
+-- 不静默丢：丢了就永远不知道「哪条客户档案没同步上」。
+CREATE TABLE IF NOT EXISTS knowledge_dlq (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id     TEXT,
+  doc_id       TEXT,
+  op           TEXT,
+  reason       TEXT,
+  attempts     INTEGER DEFAULT 0,
+  payload      TEXT,
+  status       TEXT NOT NULL DEFAULT 'dead',   -- dead | replayed | discarded
+  created_at   TEXT NOT NULL,
+  replayed_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_dlq_status ON knowledge_dlq(status, created_at);
 """
 
 PLAN_FIELDS = ("planned_at", "store_id", "topic", "duration_min")

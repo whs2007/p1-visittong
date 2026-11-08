@@ -31,6 +31,9 @@ STEPS: list[tuple[str, list[str]]] = [
     ("test  单元/集成", [sys.executable, "-m", "pytest"]),
     ("memory 会话与记忆实证", [sys.executable, "backend/scripts/memory_evidence.py"]),
     ("eval  行为评测门禁", [sys.executable, "backend/scripts/run_eval.py"]),
+    # 数据核对：把「简历上的亮点」逐条量一遍。不是又一个测试，而是防止
+    # 文档里的百分比与代码实际行为悄悄脱钩（改了阈值却没人更新文档）。
+    ("evidence 企业级数据核对", [sys.executable, "backend/scripts/enterprise_evidence.py", "--fast"]),
     ("smoke 端到端冒烟", [sys.executable, "backend/scripts/smoke_scenarios.py", "--serve"]),
     ("chaos 崩溃注入", [sys.executable, "backend/scripts/chaos_resume.py"]),
 ]

@@ -302,9 +302,12 @@ async def test_approval_approve_and_idempotent(tmp_path):
     )
     waiter = asyncio.create_task(manager.wait(info["approval_id"]))
     await asyncio.sleep(0.05)
-    assert await manager.decide(info["approval_id"], "approved", approver="manager-001") == "ok"
+    assert await manager.decide(
+        info["approval_id"], "approved", approver="manager-001", nonce=info["decision_nonce"]
+    ) == "ok"
     assert await waiter == "approved"
-    assert await manager.decide(info["approval_id"], "approved") == "already_decided"
+    # 重放：同一令牌再来一次，只能得到 already_decided（不改状态、不重复执行）
+    assert await manager.decide(info["approval_id"], "approved", nonce=info["decision_nonce"]) == "already_decided"
     row = await traces.get_approval(info["approval_id"])
     assert row["status"] == "approved" and row["approver"] == "manager-001"
 

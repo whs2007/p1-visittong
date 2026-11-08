@@ -167,9 +167,57 @@ def _migrate_0002_memories(conn: sqlite3.Connection) -> None:
     )
 
 
+_0003 = """
+CREATE TABLE IF NOT EXISTS tool_outputs (
+  ref         TEXT PRIMARY KEY,
+  trace_id    TEXT,
+  session_id  TEXT,
+  user_id     TEXT,
+  tool        TEXT,
+  content     TEXT NOT NULL,
+  sha256      TEXT NOT NULL,
+  chars       INTEGER DEFAULT 0,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tool_outputs_trace ON tool_outputs(trace_id);
+CREATE TABLE IF NOT EXISTS knowledge_dlq (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id     TEXT,
+  doc_id       TEXT,
+  op           TEXT,
+  reason       TEXT,
+  attempts     INTEGER DEFAULT 0,
+  payload      TEXT,
+  status       TEXT NOT NULL DEFAULT 'dead',
+  created_at   TEXT NOT NULL,
+  replayed_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_dlq_status ON knowledge_dlq(status, created_at);
+"""
+
+
+def _migrate_0003_outputs_nonce_and_sync(conn: sqlite3.Connection) -> None:
+    """v0.9：工具输出治理 / 审批一次性令牌 / 知识同步版本三件事的表结构。
+
+    三件事放在一条迁移里，是因为它们同属「简历上写了但代码里没有」的那批缺口，
+    一起补、一起验证、一起发布；拆成三条会让「升到哪一版」失去语义。
+    """
+    _exec_script(conn, _0003)
+    # 审批决策一次性令牌：nonce 随审批单下发，决策时必须带、且只能用一次。
+    _add_column(conn, "approvals", "decision_nonce", "TEXT")
+    _add_column(conn, "approvals", "nonce_used_at", "TEXT")
+    # 知识同步事件版本：consumer 侧用它丢弃乱序到达的旧事件。
+    _add_column(conn, "knowledge_docs", "source_version", "INTEGER DEFAULT 0")
+    # 软删墓碑：删除也带版本，否则迟到的旧事件会把已删数据写回来。
+    _add_column(conn, "knowledge_docs", "deleted_at", "TEXT")
+    # Trace 落成本，供按 skill / 按天聚合（单价可配，未配置时只报 token）。
+    _add_column(conn, "traces", "cost_usd", "REAL DEFAULT 0")
+
+
 MIGRATIONS: list[tuple[int, str, str]] = [
     (1, "governance_and_durability", _migrate_0001_governance_and_durability),
     (2, "memories", _migrate_0002_memories),
+    (3, "outputs_nonce_and_sync", _migrate_0003_outputs_nonce_and_sync),
 ]
 
 

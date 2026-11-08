@@ -38,7 +38,7 @@ jobs:
           # 需要强制时把最后一行改成 `pip-audit ... --strict`。
           pip-audit -r backend/requirements.lock || true
 
-      # 下面五步 = backend/scripts/verify_all.py 的五个环节，顺序与参数保持一致
+      # 下面六步 = backend/scripts/verify_all.py 的六个环节，顺序与参数保持一致
       # （分步是为了在 GitHub 上直接看出哪一环红了；改门禁请先改 verify_all.py）
       - name: Lint
         run: python -m ruff check backend
@@ -55,6 +55,9 @@ jobs:
             exit 1
           fi
           python backend/scripts/run_eval.py
+
+      - name: Enterprise evidence (numbers must not drift from docs)
+        run: python backend/scripts/enterprise_evidence.py --fast
 
       - name: End-to-end smoke
         run: python backend/scripts/smoke_scenarios.py --serve

@@ -28,6 +28,7 @@ from typing import Any, AsyncIterator
 from app.agent.compaction import compact_if_needed
 from app.agent.events import EventFactory
 from app.agent.hooks import ToolCall
+from app.agent.output_guard import OutputGovernor
 from app.agent.pipeline import ToolPipeline
 from app.approvals import ApprovalManager
 from app.config import PROJECT_DIR, Settings
@@ -90,6 +91,7 @@ class Orchestrator:
         session: AgentSession | None = None,
         idem: IdempotencyStore | None = None,
         memories: MemoryStore | None = None,
+        governor: OutputGovernor | None = None,
     ) -> None:
         self.settings = settings
         self.db = db
@@ -109,7 +111,7 @@ class Orchestrator:
             settings=settings, registry=registry, policy=policy,
             approvals=approvals, traces=traces, db=db, tree=tree, state=state,
             knowledge=knowledge, tool_guard=self._guard_tool,
-            tasks=tasks, idem=idem,
+            tasks=tasks, idem=idem, governor=governor,
         )
 
     # ------------------------------------------------------------------ #
@@ -718,7 +720,7 @@ class Orchestrator:
             )
             await self.traces.finish_trace(
                 trace_id, "success", latency_ms=latency_ms, tool_calls=tool_calls_count,
-                tokens_in=tokens_in, tokens_out=tokens_out,
+                tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=cost_usd,
             )
             await self.traces.add_event(
                 trace_id, "turn_end", name="任务完成",

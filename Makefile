@@ -3,7 +3,7 @@ PY ?= python
 BACKEND := backend
 PYTEST := $(PY) -m pytest
 
-.PHONY: help install run test lint eval eval-update live-smoke memory-evidence smoke chaos backup verify reconcile clean-test-data
+.PHONY: help install run test lint eval eval-update live-smoke memory-evidence evidence smoke chaos backup verify reconcile clean-test-data
 
 help:
 	@echo "make install        安装锁定依赖（requirements.lock）"
@@ -12,9 +12,10 @@ help:
 	@echo "make lint           ruff 静态检查"
 	@echo "make eval           行为评测（与 baseline 比对，回归即失败）"
 	@echo "make eval-update    更新评测基线（需在评审后执行）"
+	@echo "make evidence       企业级数据核对（6 组实测数字，约 10s）"
 	@echo "make smoke          端到端 7 组冒烟"
 	@echo "make chaos          真 kill -9 崩溃对账实验"
-	@echo "make verify         lint + test + eval + smoke + chaos（发布门禁；Windows 无 make 时用 python backend/scripts/verify_all.py）"
+	@echo "make verify         七步发布门禁（lint/test/memory/eval/evidence/smoke/chaos；Windows 用 python backend/scripts/verify_all.py）"
 	@echo "make backup         备份 SQLite 到 backend/data/backups"
 	@echo "make reconcile      单独跑一次崩溃对账（多 worker 部署用）"
 
@@ -44,6 +45,11 @@ eval:
 
 eval-update:
 	$(PY) $(BACKEND)/scripts/run_eval.py --update-baseline
+
+evidence:
+	# 把「简历上的亮点」逐条量一遍：输出治理 / 审批令牌 / 评测区间 / 同步链路 / 成本
+	# 数字与文档脱钩时，它是唯一会说话的证据（verify_all 里也会跑 --fast 版）
+	$(PY) $(BACKEND)/scripts/enterprise_evidence.py
 
 smoke:
 	# --serve：脚本自己拉一个隔离服务（独立端口 + 独立库），否则「一条命令验收」不成立

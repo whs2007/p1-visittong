@@ -37,6 +37,13 @@ class EventPipeline:
             (now_iso(), event_id),
         )
 
+    def mark_status(self, event_id: str, status: str) -> None:
+        """非 processed 的终态（如 dead）：原样保留 `processed_at` 语义为「最后一次处理时间」。"""
+        self.db._exec(  # noqa: SLF001
+            "UPDATE ingest_events SET status=?, processed_at=? WHERE event_id=?",
+            (status, now_iso(), event_id),
+        )
+
     def drain(self, handler: Callable[[dict[str, Any]], Any], limit: int = 100) -> int:
         processed = 0
         for event in self.pending(limit):

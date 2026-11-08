@@ -5,18 +5,20 @@
 > v0.5 起，能力集由配置在**装配期**决定，同一套 Runtime 可装配出不同能力集的 Agent，能力白名单在**执行期**硬校验；检查点绑定能力指纹，跨装配续跑会被显式拒绝。
 > v0.7 补的是「出事之后怎么自证」：不可变执行契约、版本化迁移、效果级幂等 + 真 `kill -9` 崩溃注入、审批等待态持久化、治理台账、结构化日志与 Prometheus、行为评测回归门禁，以及一条命令的发布门禁 `make verify`。
 > v0.8 补的是「上下文与记忆从哪来、凭什么可信」：会话树分支与 `branch_summary`、`context_edit` 上下文修订、JSONL 会话文件往返、AGENTS.md 式分层记忆、可撤销的长期记忆（来源可追溯 + 投毒门禁），以及压缩摘要接真模型并保留确定性兜底。
+> v0.9 做的是**拿简历当验收清单反向核查**：工具输出治理（脱敏 / 裁剪 / 引用化）、审批一次性令牌防重放、评测多 Trial + 置信区间、知识同步的版本守卫 / 幂等 Upsert / 重试 / DLQ、成本落库与阈值告警。核查过程、缺口与数据全部写在 `docs/10-企业级核查与数据支撑.md`，一条命令复现：`python backend/scripts/enterprise_evidence.py`。
 > 边界先说清：内置两套声明是**同一套 Skill 的不同子集**（全能力 / 只读），不是两个不同领域；执行期 guard 只在**能力被收紧或被污染**的路径上才会真正拦截。
 
 | 项 | 状态 |
 |---|---|
-| 版本 | v0.8 · 2026-11-08 |
+| 版本 | v0.9 · 2026-11-08 |
 | 运行 | ✅ 可运行；Mock 模式无需 API Key，Redis / MySQL 不可用时自动降级 |
-| 测试 | `pytest` **137 passed**（FSM、断点续跑与能力指纹、执行契约、幂等与崩溃对账、路由回退与会话卫生、会话分支与上下文修订、记忆分层/召回/投毒/撤销、权限治理、执行期能力边界、人工通道豁免、ASR、知识检索、SQL 方言、观测） |
-| 评测门禁 | `run_eval.py` 25 条行为用例 + 基线比对（路由 1.0 / 审批覆盖 1.0 / 违规 0），1 条需真模型的用例显式跳过 |
+| 测试 | `pytest` **162 passed**（FSM、断点续跑与能力指纹、执行契约、幂等与崩溃对账、路由回退与会话卫生、会话分支与上下文修订、记忆分层/召回/投毒/撤销、输出脱敏/裁剪/引用化、审批一次性令牌、知识同步版本/重试/DLQ、权限治理、执行期能力边界、人工通道豁免、ASR、知识检索、SQL 方言、观测） |
+| 评测门禁 | `run_eval.py --trials 5` 25 条用例 × 5 轮 = **125 次执行**，通过率 1.0、95% Wilson CI [0.9702, 1.0]；路由 1.0 / 审批覆盖 1.0 / 违规 0；1 条需真模型的用例显式跳过 |
+| 企业级数据 | `enterprise_evidence.py` **6 组**实测（输出 −87.5% 字符 / PII 4 处 / 重放 5→1 / 并发 6→1 / 同步 stale 与 DLQ / token 与成本），结果落 `evals/enterprise_evidence.json` |
 | 崩溃注入 | `chaos_resume.py` 真 `kill -9`，6/6 用例满足「副作用恰好一次」 |
 | 会话与记忆 | `memory_evidence.py` 离线 8 组实证（分支/修订/往返/分层/投毒/召回/撤销/提示词注入），零依赖、不调模型 |
 | 演示 | `backend/scripts/smoke_scenarios.py` 7 组可复现场景（含双通道治理与能力快照），看板 100% 成功率 / 5 条种子 Trace |
-| 工程化 | `verify_all.py` / `make verify`（lint + test + eval + smoke + chaos）、Dockerfile（非 root + healthcheck）、docker-compose（app + redis）、GitHub Actions、依赖哈希锁定 |
+| 工程化 | `verify_all.py` / `make verify`（lint + test + memory + eval + evidence + smoke + chaos 七步）、Dockerfile（非 root + healthcheck）、docker-compose（app + redis）、GitHub Actions、依赖哈希锁定 |
 | 技术栈 | Python 3.11+ / FastAPI / SQLite（可选 MySQL、Redis）/ Vue3 / SSE / pytest / ruff |
 
 > [!IMPORTANT]
@@ -191,6 +193,10 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 | 数据管道 | `domain/pipeline.py` 用事件箱 + `drain()` 模拟 Hive → Kafka 同步 |
 | schema 演进 | `domain/migrations.py`：版本化迁移（`schema_migrations` + `BEGIN IMMEDIATE` 单事务），不再散落 `PRAGMA` + `ALTER`；逐条执行而非 `executescript`（后者隐式 COMMIT，会把「要么全成」变成「成一半」） |
 | 可观测 | `GET /api/metrics`、`/api/metrics/prometheus`（带 `# HELP` / `# TYPE`）、`/api/traces?status=&skill=`；日志为单行 JSON + `request_id` + `trace_id`，`X-Request-Id` 可跨端对齐 |
+| 工具输出治理 | `agent/output_guard.py`：PII 掩码（手机/证件/卡号/邮箱）→ 超 1600 字符裁剪（首 70% + 尾 30%）→ 去敏全文落 `tool_outputs` 并给 `ref`；`GET /api/tool-outputs/{ref}` 回查（本人/主管），sha256 可校验。治理只在 `_execute` 返回处做一次，Trace / SSE / 上下文 / 幂等账本看到的是**同一份**文本 |
+| 审批一次性令牌 | `approvals.decision_nonce` + `nonce_used_at`：决策 CAS 条件为 `status='pending' ∧ nonce 匹配 ∧ nonce_used_at IS NULL`，同一条 UPDATE 写入使用时间；重放 409、错令牌 403、缺令牌 400。令牌只走主管接口，不随发起人的 SSE 下发 |
+| 知识增量同步 | `domain/knowledge_sync.py`：事件带 `op` + `version`；写入 SQL 带 `WHERE excluded.source_version > 当前版本`（版本比较与写入同一条语句，防并发乱序覆盖）；删除走软删墓碑；失败有界重试后进 `knowledge_dlq`，可重放（走完整链路，不做直接写库的捷径） |
+| 成本与告警 | `traces.cost_usd` 落库；`GET /api/metrics/cost` 按 skill / 按天聚合 token 与成本（单价可配，未配置只报 token）；`/api/metrics` 带 `alerts`（Turn 失败率、审批超时率，需满足 `min_samples` 才报） |
 
 ### 5.1 会话与记忆（v0.8，对齐 Pi 的会话模型）
 
@@ -240,13 +246,25 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 | 环节 | 命令 | 结果 |
 |---|---|---|
 | 静态检查 | `ruff check backend` | 0 告警（E/F/I 全开） |
-| 单元 / 集成 | `python -m pytest` | **137 passed**（192s） |
-| 行为评测 | `python backend/scripts/run_eval.py` | 25 条用例：路由 1.0 / 审批覆盖 1.0 / 禁调工具违规 0 / 用例通过率 1.0；1 条需真模型的用例显式跳过 |
+| 单元 / 集成 | `python -m pytest` | **162 passed** |
+| 行为评测 | `python backend/scripts/run_eval.py --trials 5` | 25 条 × 5 轮 = **125 次执行**：通过率 1.0（95% Wilson CI [0.9702, 1.0]）/ 路由 1.0 / 审批覆盖 1.0 / 禁调工具违规 0；1 条需真模型的用例显式跳过 |
+| 企业级数据 | `python backend/scripts/enterprise_evidence.py` | **6 组**实测，见下表 |
 | 端到端冒烟 | `python backend/scripts/smoke_scenarios.py` | **7/7**（含双通道治理、能力快照、断点续跑兼容） |
 | 崩溃注入 | `python backend/scripts/chaos_resume.py` | **6/6** 满足「副作用恰好一次」 |
 | Pi 架构对照 | `python backend/scripts/pi_evidence.py` | 7 组实证，指纹 `16e6fe692461…` 稳定 |
 | 会话与记忆 | `python backend/scripts/memory_evidence.py` | **8 组**离线实证全通过（分支/修订/往返/分层/投毒/召回/撤销/提示词注入） |
 | 真模型链路 | `python backend/scripts/live_smoke.py` | **5/5**（补全 / function calling / 意图分类 / 六段摘要 / tool_calls 回传格式），无密钥自动跳过、不进 CI |
+
+企业级数据（`enterprise_evidence.py` 的真实输出，不是估算）：
+
+| 维度 | 实测 |
+|---|---|
+| 上下文输出治理 | 12,829 字符 → **1,600 字符（−87.5%）**；PII 掩码 **4 处**；按 ref 回查 12,831 字符，sha256 校验 **True** |
+| 审批一次性令牌 | 同一令牌重放 5 次 → **1 成功**；6 个并发 → **1 成功**；错令牌 `token_invalid`、缺令牌 `token_missing` |
+| 评测可信度 | 25×5=125 次执行，1.0，**CI [0.9702, 1.0]**；P95 跨轮 1281–1572ms（+22.7%，故不作门禁） |
+| 知识同步 | 重复 3 次 → **写 1 次**（stale 2）；乱序 v3→v2 → 内容仍为 v3；删除后旧事件 → 不复活；失败 2 次重试后成功；死信 1 条重放成功 |
+| 成本 | 3 轮新对话：输入 1,970 / 输出 409 token，**297.4 token/轮**；示例单价下 $0.001488（单价由配置给，示例非报价） |
+| 测试资产 | **162** 条用例 |
 
 崩溃注入的实际分布（这才是它有价值的地方，不是「全绿」两个字）：
 
@@ -272,6 +290,10 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 - MySQL 只完成方言翻译与驱动接线，未在真实 MySQL 实例验证；默认仍是 SQLite 单机。**版本化迁移目前只对 SQLite 执行**（`migrations.apply(sqlite_path)`），走 MySQL 部署前需要补一套等价 DDL —— 这条没有做，不算已支持。
 - **幂等是「有效一次」不是分布式事务**：`create_visit_plan / checkin / checkout / update_visit_plan` 有业务自然唯一键（同时段唯一计划、计划状态机），崩溃重放能认领已有结果；`save_visit_log` 没有自然唯一键，极端情况下（副作用已提交、账本未终态、进程死）重放可能留下重复日志。这是取舍，不是疏漏：给它编一个唯一键反而会把「同一计划写两条真实日志」这种合法场景挡掉。
 - 多 worker 需显式设 `RECONCILE_ON_START=0`，并由一次单独进程做启动对账：`python -m app.maintenance reconcile`（或 `make reconcile`）。否则每个 worker 都会把别人的 `running` 记成 `unknown`。
+- **输出治理按字符裁，不是按 token 裁**：中文 1 字≈1 token 时够用，英文/代码会偏（一个字符远小于一个 token）。要精确得接 tokenizer，本项目为了「零依赖、可离线」没做。
+- **知识同步的并发保护靠 SQLite 写锁**：版本守卫写在 SQL 里能防乱序覆盖，但没有做过真实多 consumer 压测；换 MySQL 时行锁语义不同，需要重新验证。
+- **5 轮评测撑不起统计检验**：Wilson 区间能给「这批用例的通过率范围」，不能回答「新版本比旧版本好多少」——那需要 30+ 轮或配对设计。
+- **成本单价是配置项、示例不是报价**：token 是真实计量的，钱是按配置单价换算的；没有接缓存命中价、阶梯价、推理 token 另计这些真实计费口径。
 - 会话锁在 Redis 上（`SET NX` + owner token + Lua 校验删除）。Redis 不可用时降级为内存锁，**单机语义正确、多实例语义不成立**。
 - 前端用 `localStorage` 保存登录态：双人审批演示时主管在第二个标签登录会覆盖共享存储，销售标签请勿刷新（token 仍在内存中）。
 - `AUTH_ALLOW_INSECURE_SECRET=1` 只用于本地与 CI：它绕过「默认密钥拒绝启动」这条安全检查，任何非测试环境开启都等于自废鉴权。

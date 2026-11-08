@@ -212,8 +212,74 @@ def _scalar(ctx: AppContext, sql: str, params: tuple = ()) -> int:
     return int(next(iter(row.values())))
 
 
-def _metrics_snapshot(ctx: AppContext) -> dict[str, Any]:
+def _cost_summary(ctx: AppContext) -> dict[str, Any]:
+    """Token / 成本归因：按 skill 与按天两个切面。
+
+    单价来自配置（`price_in_per_mtok` / `price_out_per_mtok`），默认 0 表示只报
+    token 不报钱——**不编一个假价格**比报一个看起来像真的数字更负责。
+    """
+    by_skill = ctx.db._rows(  # noqa: SLF001
+        "SELECT COALESCE(skill,'unknown') AS skill, COUNT(*) AS turns,"
+        " COALESCE(SUM(tokens_in),0) AS tokens_in, COALESCE(SUM(tokens_out),0) AS tokens_out,"
+        " COALESCE(SUM(cost_usd),0) AS cost_usd"
+        " FROM traces GROUP BY COALESCE(skill,'unknown') ORDER BY tokens_in DESC"
+    )
+    by_day = ctx.db._rows(  # noqa: SLF001
+        "SELECT substr(created_at,1,10) AS day, COUNT(*) AS turns,"
+        " COALESCE(SUM(tokens_in),0) AS tokens_in, COALESCE(SUM(tokens_out),0) AS tokens_out,"
+        " COALESCE(SUM(cost_usd),0) AS cost_usd"
+        " FROM traces GROUP BY day ORDER BY day DESC LIMIT 14"
+    )
+    totals = {
+        "turns": sum(int(r["turns"] or 0) for r in by_skill),
+        "tokens_in": sum(int(r["tokens_in"] or 0) for r in by_skill),
+        "tokens_out": sum(int(r["tokens_out"] or 0) for r in by_skill),
+        "cost_usd": round(sum(float(r["cost_usd"] or 0) for r in by_skill), 6),
+    }
+    totals["tokens_per_turn"] = (
+        round((totals["tokens_in"] + totals["tokens_out"]) / totals["turns"], 1) if totals["turns"] else 0.0
+    )
     return {
+        "totals": totals,
+        "unit_price": {
+            "in_per_mtok": ctx.settings.price_in_per_mtok,
+            "out_per_mtok": ctx.settings.price_out_per_mtok,
+            "currency": "USD",
+        },
+        "by_skill": by_skill,
+        "by_day": by_day,
+    }
+
+
+def _alerts(ctx: AppContext, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    """阈值告警：只报「样本量够 + 超阈值」的两类，避免冷启动就一片红。"""
+    traces = snapshot["traces"]
+    finished = int(traces["total"]) - int(traces["running"])
+    alerts: list[dict[str, Any]] = []
+    if finished >= ctx.settings.alert_min_samples:
+        failure_rate = int(traces["failed"]) / finished
+        if failure_rate > ctx.settings.alert_failure_rate:
+            alerts.append({
+                "name": "turn_failure_rate", "level": "warning",
+                "value": round(failure_rate, 4), "threshold": ctx.settings.alert_failure_rate,
+                "samples": finished,
+                "hint": "Turn 失败率超过阈值：先看 error 事件的 type 分布，再看最近一次改动的工具",
+            })
+    decided = _scalar(ctx, "SELECT COUNT(*) FROM approvals WHERE status IN ('approved','rejected','timeout')")
+    if decided >= ctx.settings.alert_min_samples:
+        timeout_rate = _scalar(ctx, "SELECT COUNT(*) FROM approvals WHERE status='timeout'") / decided
+        if timeout_rate > ctx.settings.alert_approval_timeout_rate:
+            alerts.append({
+                "name": "approval_timeout_rate", "level": "warning",
+                "value": round(timeout_rate, 4), "threshold": ctx.settings.alert_approval_timeout_rate,
+                "samples": decided,
+                "hint": "审批超时率偏高：检查审批人是否在线 / 超时时间是否短于实际响应时间",
+            })
+    return alerts
+
+
+def _metrics_snapshot(ctx: AppContext) -> dict[str, Any]:
+    snapshot = {
         "traces": {
             "total": _scalar(ctx, "SELECT COUNT(*) FROM traces"),
             "failed": _scalar(ctx, "SELECT COUNT(*) FROM traces WHERE status='failed'"),
@@ -242,7 +308,11 @@ def _metrics_snapshot(ctx: AppContext) -> dict[str, Any]:
         },
         "storage": {"db": ctx.db.dialect, "redis": ctx.state.backend, "audio": ctx.audio.backend},
         "pipeline_events": _scalar(ctx, "SELECT COUNT(*) FROM ingest_events"),
+        "cost": _cost_summary(ctx),
+        "ingest": ctx.knowledge_sync.stats() if ctx.knowledge_sync is not None else {},
     }
+    snapshot["alerts"] = _alerts(ctx, snapshot)
+    return snapshot
 
 
 @router.get("/metrics")
@@ -252,6 +322,16 @@ async def metrics(
 ):
     ensure_manager(user, action="查看指标", hint="")
     return _metrics_snapshot(ctx)
+
+
+@router.get("/metrics/cost")
+async def cost_metrics(
+    ctx: AppContext = Depends(get_ctx),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """成本归因（主管）：按 skill / 按天，外加当前活跃告警。"""
+    ensure_manager(user, action="查看成本指标", hint="")
+    return {**_cost_summary(ctx), "alerts": _alerts(ctx, _metrics_snapshot(ctx))}
 
 
 # (指标名, 类型, 帮助文本)。counter 语义的用 _total，存量/瞬时值用 gauge，
@@ -274,6 +354,11 @@ _PROMETHEUS_SPEC: list[tuple[str, str, str]] = [
     ("visittong_tools_enabled", "gauge", "Enabled tools"),
     ("visittong_tools_write_scope", "gauge", "Tools with write scope"),
     ("visittong_pipeline_events_total", "gauge", "Ingest pipeline events"),
+    ("visittong_llm_tokens_in_total", "gauge", "Prompt tokens accumulated over finished traces"),
+    ("visittong_llm_tokens_out_total", "gauge", "Completion tokens accumulated over finished traces"),
+    ("visittong_cost_usd", "gauge", "Estimated LLM cost in USD (unit price from config)"),
+    ("visittong_knowledge_events_pending", "gauge", "Knowledge sync events waiting for the consumer"),
+    ("visittong_knowledge_dlq_dead", "gauge", "Knowledge sync dead letters awaiting replay"),
 ]
 
 
@@ -303,6 +388,11 @@ async def metrics_prometheus(
         "visittong_tools_enabled": data["tools"]["enabled"],
         "visittong_tools_write_scope": data["tools"]["write"],
         "visittong_pipeline_events_total": data["pipeline_events"],
+        "visittong_llm_tokens_in_total": data["cost"]["totals"]["tokens_in"],
+        "visittong_llm_tokens_out_total": data["cost"]["totals"]["tokens_out"],
+        "visittong_cost_usd": data["cost"]["totals"]["cost_usd"],
+        "visittong_knowledge_events_pending": (data.get("ingest") or {}).get("events", {}).get("pending", 0),
+        "visittong_knowledge_dlq_dead": (data.get("ingest") or {}).get("dlq", {}).get("dead", 0),
     }
     lines: list[str] = []
     for name, kind, help_text in _PROMETHEUS_SPEC:
@@ -324,3 +414,21 @@ async def trace_detail(
         raise not_found("TRACE_NOT_FOUND", "Trace 不存在")
     events = await ctx.traces.get_events(trace_id)
     return {"trace": trace, "events": events}
+
+
+@router.get("/tool-outputs/{ref}")
+async def tool_output(
+    ref: str,
+    ctx: AppContext = Depends(get_ctx),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """工具输出的「引用化」回查点。
+
+    上下文里只留裁剪后的首尾 + `ref`，要看全文就按 ref 取——取到的是**脱敏后**
+    的全文（原始 PII 从未落库）。越权与不存在同样返回 404，不泄露存在性。
+    """
+    row = ctx.governor.fetch(ref) if ctx.governor is not None else None
+    if row is None or (not is_manager(user) and row.get("user_id") != str(user.get("user_id") or "")):
+        raise not_found("TOOL_OUTPUT_NOT_FOUND", "引用不存在或已过期")
+    row.pop("user_id", None)
+    return {"output": row, "sha256_verified": bool(row.get("sha256"))}

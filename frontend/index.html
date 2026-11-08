@@ -1787,7 +1787,9 @@
       created_at: a.created_at || '',
       expires_at: a.expires_at || '',
       decided_at: a.decided_at || '',
-      decision_reason: a.decision_reason || ''
+      decision_reason: a.decision_reason || '',
+      // 一次性决策令牌：服务端生成、随单下发、用后即废（重放返回 409）
+      decision_nonce: a.decision_nonce || ''
     };
   }
   function normalizeTraceSummary(raw) {
@@ -3457,6 +3459,15 @@
         this.toastText('已收起审批，可在审批中心或对话顶部重新处理');
         this.loadPendingApprovals(true);
       },
+      async ensureApprovalNonce(ap) {
+        if (ap.decision_nonce) return ap.decision_nonce;
+        // 从 SSE 打开的审批面板不带令牌，回列表补一次：令牌只走主管接口，
+        // 不随发起人的事件流下发。
+        await this.loadPendingApprovals(true);
+        const found = (this.pendingApprovals || []).find(x => x.approval_id === ap.approval_id);
+        if (found && found.decision_nonce) ap.decision_nonce = found.decision_nonce;
+        return ap.decision_nonce || '';
+      },
       async submitApproval(decision) {
         const approval = this.approval;
         if (!approval || approval.submitting || approval.waiting) return;
@@ -3464,9 +3475,16 @@
         approval.error = '';
         approval.submitting = decision;
         try {
+          const nonce = await this.ensureApprovalNonce(approval);
+          if (!nonce) {
+            approval.submitting = '';
+            approval.error = '审批单已失效，请在审批中心刷新后重试';
+            this.loadPendingApprovals(true);
+            return;
+          }
           await this.api('/api/approvals/' + encodeURIComponent(approval.approval_id), {
             method: 'POST',
-            body: { decision: decision, reason: decision === 'approved' ? '演示放行' : '人工拒绝' }
+            body: { decision: decision, reason: decision === 'approved' ? '演示放行' : '人工拒绝', nonce: nonce }
           });
           if (this.approval !== approval) return;
           approval.submitting = '';
@@ -3492,9 +3510,11 @@
         if (!this.isManager) { this.toastText('当前账号无审批权限'); return; }
         this.decidingId = ap.approval_id;
         try {
+          const nonce = await this.ensureApprovalNonce(ap);
+          if (!nonce) { this.toastText('审批单已失效，请刷新'); await this.loadPendingApprovals(true); return; }
           await this.api('/api/approvals/' + encodeURIComponent(ap.approval_id), {
             method: 'POST',
-            body: { decision: decision, reason: decision === 'approved' ? '审批中心放行' : '审批中心拒绝' }
+            body: { decision: decision, reason: decision === 'approved' ? '审批中心放行' : '审批中心拒绝', nonce: nonce }
           });
           this.toastText(decision === 'approved' ? '已批准该操作' : '已拒绝该操作');
           if (this.approval && this.approval.approval_id === ap.approval_id) this.approval.waiting = true;

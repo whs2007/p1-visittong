@@ -71,9 +71,17 @@ class Settings(BaseSettings):
     memory_min_score: float = 0.16        # 召回相似度下限，低于视为不相关
     memory_layer_max_chars: int = 1600    # 单层记忆文件注入上限（防止挤占上下文）
     memory_entry_max_chars: int = 400     # 单条动态记忆长度上限
-    # ---------- 成本（可选，用于 done 事件展示）----------
+    # ---------- 工具输出治理（脱敏 / 裁剪 / 引用化）----------
+    tool_output_max_chars: int = 1600     # 进上下文的单次工具输出上限（超出裁剪 + 引用化）
+    tool_output_head_ratio: float = 0.7   # 裁剪后首部占比（尾部保留现场，如错误码 / 汇总行）
+    pii_redact: bool = True               # 手机号 / 身份证 / 银行卡 / 邮箱掩码
+    # ---------- 成本（按 token 计量 + 可配置单价；单价留空则只报 token）----------
     price_in_per_mtok: float = 0.0
     price_out_per_mtok: float = 0.0
+    # ---------- 告警阈值（失败率 / 审批超时率，超过即在 /api/metrics 置警告）----------
+    alert_failure_rate: float = 0.15
+    alert_approval_timeout_rate: float = 0.10
+    alert_min_samples: int = 20
     # ---------- 录音 / ASR / 纪要 ----------
     asr_backend: str = "mock"      # mock | faster_whisper | command
     asr_model: str = "small"

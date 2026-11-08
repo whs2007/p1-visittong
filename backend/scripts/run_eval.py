@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import shutil
 import sys
 import tempfile
@@ -59,6 +60,8 @@ TOLERANCE = {
 # 测试进程的调度抖动，不是产品性能 —— 一个会随机变红的门禁，最后一定会被
 # 人关掉，那比没有门禁更糟。延迟只报告，要卡性能请用专门的基准测试。
 LOWER_IS_BETTER = {"forbidden_tool_violations"}
+# CI 下界的容差：区间本身有抽样误差，卡到小数点后 4 位会让门禁在噪声里飘。
+CI_TOLERANCE = 0.02
 
 
 def _settings(db_path: str):
@@ -72,6 +75,45 @@ def _settings(db_path: str):
         # 评测只关心「有没有要求审批」，不等待人工；1s 后自然超时
         approval_timeout_s=1,
     )
+
+
+# --------------------------------------------------------------------------- #
+# 置信区间（v0.9）：单轮 25 条用例的 100% 通过，不等于「通过率 100%」
+# --------------------------------------------------------------------------- #
+def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score 区间：小样本 + 极端比例（0/25、25/25）下比正态近似稳。
+
+    25 条全过时，正态近似会给出 [1.0, 1.0]，等于宣称「绝不可能失败」；
+    Wilson 给出约 [0.867, 1.0]——这才是 25 个样本能支撑的结论。
+    """
+    if total <= 0:
+        return 0.0, 1.0
+    p = successes / total
+    denom = 1 + z * z / total
+    center = (p + z * z / (2 * total)) / denom
+    margin = z * ((p * (1 - p) / total + z * z / (4 * total * total)) ** 0.5) / denom
+    return max(0.0, round(center - margin, 4)), min(1.0, round(center + margin, 4))
+
+
+def bootstrap_interval(values: list[float], *, resamples: int = 2000, seed: int = 20261108) -> tuple[float, float]:
+    """按月 trial 均值做自助法区间：把「轮次」当抽样单位，比按用例更保守。
+
+    两种区间的差别就是面试里最容易被追问的点：
+    - Wilson 把每次执行当独立伯努利试验（n = 用例 × 轮次），区间窄、偏乐观；
+    - bootstrap 重采样**轮次**，承认「同一轮内部用例相关」，区间宽、更保守。
+    单轮时 bootstrap 退化为点估计，此时只报 Wilson，并显式标注 trials=1。
+    """
+    if len(values) < 2:
+        return (values[0], values[0]) if values else (0.0, 0.0)
+    rng = random.Random(seed)
+    means = []
+    for _ in range(resamples):
+        sample = [values[rng.randrange(len(values))] for _ in values]
+        means.append(sum(sample) / len(sample))
+    means.sort()
+    low = means[int(0.025 * (len(means) - 1))]
+    high = means[int(0.975 * (len(means) - 1))]
+    return round(low, 4), round(high, 4)
 
 
 def _load_cases() -> list[dict[str, Any]]:
@@ -173,6 +215,51 @@ def _evaluate(results: list[dict[str, Any]]) -> dict[str, Any]:
     return metrics
 
 
+def _run_trials(cases: list[dict[str, Any]], trials: int, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """跑 N 轮，每轮一个独立库 + 独立会话。
+
+    为什么必须独立：评测会创建计划、触发审批、写日志，共用库时第二轮看到的是
+    「上一轮留下的状态」，于是第二轮通过率天然更高——那不是稳定性，是污染。
+    """
+    visit_cases = [c for c in cases if c.get("phase", "visit") == "visit"]
+    ops_cases = [c for c in cases if c.get("phase") == "ops"]
+    per_trial: list[dict[str, Any]] = []
+    all_results: list[dict[str, Any]] = []
+    for index in range(trials):
+        workdir = root / f"trial{index + 1}"
+        workdir.mkdir(parents=True, exist_ok=True)
+        results = _run_phase(visit_cases, "visit", workdir, user="sales-001")
+        if ops_cases:
+            results += _run_phase(ops_cases, "ops_readonly", workdir, user="sales-001")
+        per_trial.append(_evaluate_with_failures(results)[0])
+        all_results.extend(results)
+    return per_trial, all_results
+
+
+def _aggregate(per_trial: list[dict[str, Any]], all_results: list[dict[str, Any]], trials: int) -> tuple[dict, list[str]]:
+    """合并多轮：点估计取全样本，区间同时给 Wilson 与 bootstrap。"""
+    metrics, failures = _evaluate_with_failures(all_results)
+    rates = [round(float(m.get("case_pass_rate") or 0.0), 4) for m in per_trial]
+    passed = sum(round(rate * m["cases"]) for rate, m in zip(rates, per_trial))
+    total = sum(int(m["cases"]) for m in per_trial)
+    wilson_low, wilson_high = wilson_interval(int(passed), int(total))
+    boot_low, boot_high = bootstrap_interval(rates)
+    p95s = [int(m.get("p95_latency_ms") or 0) for m in per_trial]
+    metrics.update(
+        {
+            "trials": trials,
+            "cases_per_trial": int(total // trials) if trials else 0,
+            "executions": int(total),
+            "per_trial_pass_rate": rates,
+            "per_trial_min_pass_rate": min(rates) if rates else 0.0,
+            "pass_rate_ci_wilson": [wilson_low, wilson_high],
+            "pass_rate_ci_bootstrap": [boot_low, boot_high],
+            "p95_latency_spread_ms": [min(p95s), max(p95s)] if p95s else [0, 0],
+        }
+    )
+    return metrics, failures
+
+
 def _evaluate_with_failures(results: list[dict[str, Any]]) -> tuple[dict[str, Any], list[str]]:
     """指标 + 逐条失败原因。
 
@@ -267,6 +354,19 @@ def _compare(current: dict[str, Any], baseline: dict[str, Any]) -> list[str]:
         value, base = current.get(key, 0), baseline[key]
         if value > base:   # 违规次数零容忍，不看百分比
             regressions.append(f"{key}: {value} > baseline {base}")
+    # CI 下界比较：只在两边 trials 相同、且 baseline 记录过 CI 时才比。
+    # 5 轮的区间和 1 轮的区间不是同一个统计量，混着比会造出假回归。
+    if (
+        baseline.get("trials") == current.get("trials")
+        and baseline.get("pass_rate_ci_wilson")
+        and current.get("pass_rate_ci_wilson")
+    ):
+        cur_low = current["pass_rate_ci_wilson"][0]
+        base_low = baseline["pass_rate_ci_wilson"][0]
+        if cur_low < base_low - CI_TOLERANCE:
+            regressions.append(
+                f"pass_rate_ci_wilson[low]: {cur_low} < baseline {base_low} (tolerance {CI_TOLERANCE})"
+            )
     return regressions
 
 
@@ -275,6 +375,7 @@ def main() -> int:
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--json", default="")
     parser.add_argument("--verbose", action="store_true", help="打印每条失败用例的具体原因")
+    parser.add_argument("--trials", type=int, default=1, help="重复轮次（每轮独立库；>1 才有多轮置信区间）")
     args = parser.parse_args()
 
     cases = _load_cases()
@@ -282,17 +383,23 @@ def main() -> int:
     # 直接算失败等于把「mock 的天花板」记成「系统退化」，会让基线失去意义。
     skipped = [c["id"] for c in cases if c.get("requires") == "llm"]
     cases = [c for c in cases if c.get("requires") != "llm"]
-    workdir = Path(tempfile.mkdtemp(prefix="p1_eval_"))
-    visit_cases = [c for c in cases if c.get("phase", "visit") == "visit"]
-    ops_cases = [c for c in cases if c.get("phase") == "ops"]
-
-    results = _run_phase(visit_cases, "visit", workdir, user="sales-001")
-    if ops_cases:
-        results += _run_phase(ops_cases, "ops_readonly", workdir, user="sales-001")
-    metrics, failures = _evaluate_with_failures(results)
+    trials = max(1, int(args.trials))
+    root = Path(tempfile.mkdtemp(prefix="p1_eval_"))
+    try:
+        per_trial, results = _run_trials(cases, trials, root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    metrics, failures = _aggregate(per_trial, results, trials)
     metrics["skipped_requires_llm"] = len(skipped)
 
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
+    low, high = metrics["pass_rate_ci_wilson"]
+    print(
+        f"\n通过率 {metrics['case_pass_rate']:.4f}（{metrics['executions']} 次执行 = "
+        f"{metrics['cases_per_trial']} 用例 × {trials} 轮）；"
+        f"95% Wilson CI [{low}, {high}]；bootstrap CI {metrics['pass_rate_ci_bootstrap']}"
+        + ("（单轮，bootstrap 退化为点估计）" if trials < 2 else "")
+    )
     if skipped:
         print(f"\n按设计跳过（需要真模型语义泛化，mock 不可判定）：{', '.join(skipped)}")
     if failures and (args.verbose or not args.update_baseline):

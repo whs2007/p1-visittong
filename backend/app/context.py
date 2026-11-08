@@ -4,12 +4,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.agent.output_guard import OutputGovernor
 from app.approvals import ApprovalManager
 from app.config import Settings
 from app.domain.audio import AudioStore
 from app.domain.db import Database
 from app.domain.governance import GovernanceStore
 from app.domain.idempotency import IdempotencyStore
+from app.domain.knowledge_sync import KnowledgeSync
 from app.domain.pipeline import EventPipeline
 from app.domain.tasks import TaskStore
 from app.llm.base import BaseLLM
@@ -38,15 +40,26 @@ class AppContext:
     audio: AudioStore
     knowledge: Any
     events: EventPipeline
+    knowledge_sync: KnowledgeSync | None = None
     session: AgentSession | None = None
     resource_loader: ResourceLoader | None = None
     idem: IdempotencyStore | None = None
     governance: GovernanceStore | None = None
     memories: MemoryStore | None = None
+    governor: OutputGovernor | None = None
     login_failures: dict[str, dict[str, float]] = field(default_factory=dict)
     orchestrator: Orchestrator = field(init=False)
 
     def __post_init__(self) -> None:
+        # 输出治理器在装配期建一份，pipeline 与回查接口共用（同一个 db、同一套阈值），
+        # 避免「写进去用一套参数、读出来用另一套」这类只有排查时才发现的不一致。
+        if self.governor is None:
+            self.governor = OutputGovernor(
+                self.db,
+                max_chars=self.settings.tool_output_max_chars,
+                head_ratio=self.settings.tool_output_head_ratio,
+                redact=self.settings.pii_redact,
+            )
         self.orchestrator = Orchestrator(
             settings=self.settings,
             db=self.db,
@@ -62,4 +75,5 @@ class AppContext:
             session=self.session,
             memories=self.memories,
             idem=self.idem,
+            governor=self.governor,
         )

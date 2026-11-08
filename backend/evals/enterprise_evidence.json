@@ -1,0 +1,127 @@
+{
+  "output_governance": {
+    "original_chars": 12829,
+    "kept_chars": 1600,
+    "savings_pct": 87.5,
+    "pii_redacted": 4,
+    "ref": "TO-0f90ddc8c6f2",
+    "ref_sha256_verified": true,
+    "method": "OutputGovernor 对 12k 字符工具输出执行 脱敏→裁剪→引用化，再按 ref 回查校验摘要",
+    "source": "backend/app/agent/output_guard.py · tests/test_output_guard.py"
+  },
+  "approval_token": {
+    "replay_attempts": 5,
+    "replay_ok": 1,
+    "replay_rejected": 4,
+    "concurrent_attempts": 6,
+    "concurrent_winners": 1,
+    "wrong_nonce": "token_invalid",
+    "missing_nonce": "token_missing",
+    "nonce_used_at": true,
+    "method": "同一 approval 上重复/并发调用 decide，统计 ok 与拒绝分布",
+    "source": "backend/app/approvals.py · app/trace/store.py · tests/test_approval_token.py"
+  },
+  "eval": {
+    "cases_per_trial": 25,
+    "trials": 5,
+    "executions": 125,
+    "case_pass_rate": 1.0,
+    "pass_rate_ci_wilson": [
+      0.9702,
+      1.0
+    ],
+    "route_accuracy": 1.0,
+    "approval_coverage": 1.0,
+    "forbidden_tool_violations": 0,
+    "p95_latency_spread_ms": [
+      1281,
+      1572
+    ],
+    "method": "run_eval.py --trials 5，每轮独立库独立会话；Wilson 区间按执行次数计",
+    "source": "backend/scripts/run_eval.py · backend/evals/baseline.json"
+  },
+  "knowledge_sync": {
+    "duplicate": {
+      "scanned": 3,
+      "processed": 1,
+      "stale": 2,
+      "dead": 0,
+      "retried": 0
+    },
+    "out_of_order": {
+      "scanned": 1,
+      "processed": 0,
+      "stale": 1,
+      "dead": 0,
+      "retried": 0,
+      "final_text": "第三版"
+    },
+    "delete_then_stale": {
+      "scanned": 1,
+      "processed": 0,
+      "stale": 1,
+      "dead": 0,
+      "retried": 0
+    },
+    "retry_then_success": {
+      "scanned": 1,
+      "processed": 1,
+      "stale": 0,
+      "dead": 0,
+      "retried": 2
+    },
+    "dead_letter": {
+      "scanned": 1,
+      "processed": 0,
+      "stale": 0,
+      "dead": 1,
+      "retried": 2,
+      "replay": "requeued",
+      "replay_written": true
+    },
+    "method": "同一 db 上依次注入重复/乱序/删除回流/瞬时失败/持久失败，读最终库状态",
+    "source": "backend/app/domain/knowledge_sync.py · tests/test_knowledge_sync.py"
+  },
+  "cost": {
+    "totals": {
+      "turns": 8,
+      "tokens_in": 1970,
+      "tokens_out": 409,
+      "cost_usd": 0.001488,
+      "tokens_per_turn": 297.4
+    },
+    "by_skill": {
+      "plan_create": {
+        "turns": 2,
+        "tokens_in": 600,
+        "tokens_out": 99
+      },
+      "visit_log": {
+        "turns": 2,
+        "tokens_in": 560,
+        "tokens_out": 96
+      },
+      "todo_query": {
+        "turns": 2,
+        "tokens_in": 540,
+        "tokens_out": 79
+      },
+      "plan_update": {
+        "turns": 1,
+        "tokens_in": 180,
+        "tokens_out": 90
+      },
+      "checkin": {
+        "turns": 1,
+        "tokens_in": 90,
+        "tokens_out": 45
+      }
+    },
+    "alerts": [],
+    "method": "TestClient 跑 3 轮对话，读 /api/metrics/cost 的聚合结果",
+    "source": "backend/app/api/routes_obs.py:_cost_summary · app/orchestrator/loop.py"
+  },
+  "tests": {
+    "skipped": true
+  }
+}

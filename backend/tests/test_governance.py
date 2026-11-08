@@ -112,12 +112,17 @@ def test_write_tool_is_audited_and_manager_can_read(client, manager_client) -> N
 def test_approval_decision_is_audited(client, manager_client, tmp_path) -> None:
     con = sqlite3.connect(str(tmp_path / "test.db"))
     con.execute(
-        "INSERT INTO approvals (approval_id,trace_id,session_id,tool,args,risk,reason,status,requester,created_at,expires_at)"
-        " VALUES ('apr_test','t1','s1','cancel_visit_plan','{}','high','高危','pending','sales-001',datetime('now'),datetime('now','+5 minutes'))"
+        "INSERT INTO approvals"
+        " (approval_id,trace_id,session_id,tool,args,risk,reason,status,requester,created_at,expires_at,decision_nonce)"
+        " VALUES ('apr_test','t1','s1','cancel_visit_plan','{}','high','高危','pending','sales-001',"
+        "datetime('now'),datetime('now','+5 minutes'),'nonce-for-test')"
     )
     con.commit()
     con.close()
-    res = manager_client.post("/api/approvals/apr_test", json={"decision": "approved", "reason": "ok"})
+    res = manager_client.post(
+        "/api/approvals/apr_test",
+        json={"decision": "approved", "reason": "ok", "nonce": "nonce-for-test"},
+    )
     assert res.status_code == 200, res.text
     audit = manager_client.get("/api/audit").json()["audit"]
     assert any(row["action"] == "approval.approved" and row["target_id"] == "apr_test" for row in audit)

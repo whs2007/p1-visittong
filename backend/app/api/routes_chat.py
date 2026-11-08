@@ -11,7 +11,7 @@ from app.api.deps import get_ctx, get_current_user
 from app.api.sse import SSE_HEADERS, sse
 from app.auth import ensure_can_decide, ensure_owner_or_manager
 from app.context import AppContext
-from app.errors import ApiError, conflict, not_found
+from app.errors import ApiError, bad_request, conflict, not_found
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -36,6 +36,7 @@ class CardActionBody(BaseModel):
 class ApprovalBody(BaseModel):
     decision: Literal["approved", "rejected"]
     reason: str = ""
+    nonce: str | None = None      # 一次性决策令牌（`GET /api/approvals` 下发，用后即废）
 
 
 @router.post("/sessions")
@@ -283,12 +284,18 @@ async def decide_approval(
         raise not_found("APPROVAL_NOT_FOUND", "审批单不存在")
     ensure_can_decide(user, approval)
     result = await ctx.approvals.decide(
-        approval_id, body.decision, body.reason, approver=user["user_id"]
+        approval_id, body.decision, body.reason, approver=user["user_id"], nonce=body.nonce,
     )
     if result == "not_found":
         raise not_found("APPROVAL_NOT_FOUND", "审批单不存在")
+    if result == "token_missing":
+        raise bad_request("APPROVAL_TOKEN_REQUIRED", "缺少一次性决策令牌（decision_nonce）")
+    if result == "token_invalid":
+        raise ApiError(403, "APPROVAL_TOKEN_INVALID", "决策令牌与审批单不匹配")
     if result == "already_decided":
-        raise conflict("APPROVAL_ALREADY_DECIDED", "该审批单已处理，请刷新")
+        # 同一张单的第二次提交：可能是重复点击，也可能是重放攻击。
+        # 两种都只能拒——但不能说「令牌已用过」而泄露「这张单刚才被谁批了」。
+        raise conflict("APPROVAL_ALREADY_DECIDED", "该审批单已处理或令牌已失效，请刷新")
     ctx.db.add_audit(
         actor=user["user_id"], action=f"approval.{body.decision}",
         target_type="approval", target_id=approval_id,

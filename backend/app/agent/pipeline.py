@@ -27,6 +27,7 @@ import time
 from typing import Any, AsyncIterator, Callable
 
 from app.agent.hooks import HookChain, HookDecision, ToolCall, ToolOutcome
+from app.agent.output_guard import OutputGovernor
 from app.approvals import ApprovalManager
 from app.config import Settings
 from app.domain.db import Database
@@ -59,6 +60,7 @@ class ToolPipeline:
         tool_guard: Callable[[str, str], str | None] | None = None,
         tasks: TaskStore | None = None,
         idem: IdempotencyStore | None = None,
+        governor: OutputGovernor | None = None,
     ) -> None:
         self.settings = settings
         self.registry = registry
@@ -74,6 +76,14 @@ class ToolPipeline:
         self.tool_guard = tool_guard
         self.tasks = tasks
         self.idem = idem
+        # 输出治理只在一处生效：`_execute` 的返回处。这样 Trace、SSE、上下文、
+        # 幂等账本看到的是**同一份**文本，不会出现「日志里是全的、模型看到是截的」。
+        self.governor = governor or OutputGovernor(
+            db,
+            max_chars=settings.tool_output_max_chars,
+            head_ratio=settings.tool_output_head_ratio,
+            redact=settings.pii_redact,
+        )
 
     async def run(
         self,
@@ -216,6 +226,8 @@ class ToolPipeline:
                 "name": call.name, "label": call.label,
                 "skill": call.spec.skill if call.spec else None,
                 "args": call.args, "output": outcome.output[:500],
+                "output_ref": (outcome.data or {}).get("_output_ref"),
+                "pii_redacted": (outcome.data or {}).get("_pii_redacted", 0),
                 "decision": outcome.decision, "rule": decision.rule,
                 "approval_id": approval_id, "approved": approved,
                 "contract": contract.describe() if contract else None,
@@ -233,6 +245,8 @@ class ToolPipeline:
             "tool_result", call_id=call.call_id, name=call.name, label=call.label,
             status=outcome.status, output=outcome.output, latency_ms=latency,
             risk=outcome.risk, decision=outcome.decision,
+            output_ref=(outcome.data or {}).get("_output_ref"),
+            pii_redacted=(outcome.data or {}).get("_pii_redacted", 0),
         )
 
     async def _execute(
@@ -303,6 +317,11 @@ class ToolPipeline:
             log.exception("tool failed: %s", call.name)
             result = ToolResult("error", f"工具执行异常：{exc}")
 
+        # 输出治理：脱敏 → 裁剪 → 引用化。放在 complete_tool 之前，是为了让
+        # 幂等账本里存的也是治理后文本——崩溃重放时模型看到的东西必须一致，
+        # 否则「重放」等于换了一份输入在跑。
+        result = self._govern(result, call=call, user_id=user_id, session_id=session_id, trace_id=trace_id)
+
         if self.tasks is not None and contract is not None:
             self.tasks.complete_tool(
                 turn_id=contract.turn_id, step=contract.step, call_id=contract.call_id,
@@ -313,3 +332,25 @@ class ToolPipeline:
         if scope is not None and scope.state != "done":
             scope.remember(result)
         return result
+
+    def _govern(
+        self, result: ToolResult, *, call: ToolCall, user_id: str, session_id: str, trace_id: str,
+    ) -> ToolResult:
+        """对工具输出做脱敏 / 裁剪 / 引用化，返回新的 ToolResult。
+
+        只改 `output`（进模型的那段），`data` 里的结构化字段（card、missing、
+        plan_id 等）原样保留：它们是业务契约，截断就等于改契约。
+        """
+        governed = self.governor.govern(
+            result.output, tool=call.name, trace_id=trace_id,
+            session_id=session_id, user_id=user_id,
+        )
+        if not governed.truncated and not governed.redactions:
+            return result
+        data = dict(result.data or {})
+        if governed.ref:
+            data["_output_ref"] = governed.ref
+            data["_output_truncated"] = True
+        if governed.redactions:
+            data["_pii_redacted"] = governed.redactions
+        return ToolResult(result.status, governed.text, data)

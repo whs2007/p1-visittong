@@ -43,27 +43,72 @@ class LocalKnowledge:
         self.db = db
         self.dim = dim
 
-    def upsert(self, *, doc_id: str, kind: str, ref_id: str, title: str, text: str) -> None:
+    def upsert(
+        self, *, doc_id: str, kind: str, ref_id: str, title: str, text: str,
+        version: int = 0, force: bool = False,
+    ) -> bool:
+        """幂等写入。返回是否真的改了行。
+
+        **版本守卫写在 SQL 里**，而不是「先查版本再决定写不写」：
+        两个 consumer 并发时，先查后写都通过 → 旧事件覆盖新事件（乱序写入）。
+        `ON CONFLICT ... DO UPDATE ... WHERE excluded.source_version > 当前版本`
+        把「比较」和「写入」压进同一条语句，SQLite 的写锁保证它原子。
+        """
         vector = json.dumps(embed(title + " " + text, self.dim))
         from app.utils import now_iso
 
-        self.db._exec(  # noqa: SLF001
-            "INSERT INTO knowledge_docs (doc_id,kind,ref_id,title,text,vector,updated_at)"
-            " VALUES (?,?,?,?,?,?,?)"
-            " ON CONFLICT(doc_id) DO UPDATE SET kind=excluded.kind, ref_id=excluded.ref_id,"
-            " title=excluded.title, text=excluded.text, vector=excluded.vector, updated_at=excluded.updated_at",
-            (doc_id, kind, ref_id, title, text, vector, now_iso()),
+        guard = "" if force else (
+            " WHERE excluded.source_version > knowledge_docs.source_version"
         )
+        # `deleted_at=NULL`：一条「删除」之后又来了新版本，等于数据复活。
+        # 不同步清空它，后续 search 会永远看不到这条正确的数据。
+        affected = self.db._exec(  # noqa: SLF001
+            "INSERT INTO knowledge_docs (doc_id,kind,ref_id,title,text,vector,source_version,deleted_at,updated_at)"
+            " VALUES (?,?,?,?,?,?,?,NULL,?)"
+            " ON CONFLICT(doc_id) DO UPDATE SET kind=excluded.kind, ref_id=excluded.ref_id,"
+            " title=excluded.title, text=excluded.text, vector=excluded.vector,"
+            " source_version=excluded.source_version, deleted_at=NULL, updated_at=excluded.updated_at"
+            + guard,
+            (doc_id, kind, ref_id, title, text, vector, int(version or 0), now_iso()),
+        )
+        return affected > 0
 
-    def count(self) -> int:
-        row = self.db._row(self.db._conn().execute("SELECT COUNT(*) AS n FROM knowledge_docs").fetchone())  # noqa: SLF001
+    def soft_delete(self, *, doc_id: str, version: int = 0) -> bool:
+        """软删：行不消失，只打 `deleted_at`。
+
+        物理删会把「版本号」一起删掉——之后一个迟到的 v2 事件会以「库里没有」
+        为由把已删除的 v3 数据重新写回来。墓碑行是幂等删除的最小代价。
+        """
+        from app.utils import now_iso
+
+        now = now_iso()
+        affected = self.db._exec(  # noqa: SLF001
+            "UPDATE knowledge_docs SET deleted_at=?, source_version=?, updated_at=?"
+            " WHERE doc_id=? AND source_version < ?",
+            (now, int(version or 0), now, doc_id, int(version or 0)),
+        )
+        return affected > 0
+
+    def count(self, *, include_deleted: bool = False) -> int:
+        sql = "SELECT COUNT(*) AS n FROM knowledge_docs"
+        if not include_deleted:
+            sql += " WHERE deleted_at IS NULL"
+        row = self.db._row(self.db._conn().execute(sql).fetchone())  # noqa: SLF001
         return int(row["n"]) if row else 0
 
+    def version_of(self, doc_id: str) -> int:
+        row = self.db._row(  # noqa: SLF001
+            self.db._conn().execute(
+                "SELECT source_version FROM knowledge_docs WHERE doc_id=?", (doc_id,)
+            ).fetchone()
+        )
+        return int(row["source_version"] or 0) if row else -1     # -1 = 不存在
+
     def search(self, query: str, *, kind: str | None = None, top_k: int = 5) -> list[dict[str, Any]]:
-        sql = "SELECT * FROM knowledge_docs"
+        sql = "SELECT * FROM knowledge_docs WHERE deleted_at IS NULL"
         params: tuple = ()
         if kind:
-            sql += " WHERE kind=?"
+            sql += " AND kind=?"
             params = (kind,)
         rows = self.db._rows(sql, params)  # noqa: SLF001
         query_vector = embed(query, self.dim)
@@ -140,13 +185,13 @@ def sync_knowledge(db: Database, adapter: Any) -> dict[str, Any]:
         ).strip()
         adapter.upsert(
             doc_id=f"customer:{customer['customer_id']}", kind="customer",
-            ref_id=customer["customer_id"], title=title, text=text,
+            ref_id=customer["customer_id"], title=title, text=text, force=True,
         )
     for store in stores:
         title = store.get("name") or store["store_id"]
         text = " ".join(str(store.get(key) or "") for key in ("name", "address", "city")).strip()
         adapter.upsert(
             doc_id=f"store:{store['store_id']}", kind="store",
-            ref_id=store["store_id"], title=title, text=text,
+            ref_id=store["store_id"], title=title, text=text, force=True,
         )
     return {"customers": len(customers), "stores": len(stores), "docs": adapter.count()}

@@ -29,6 +29,7 @@ from app.domain.audio import AudioStore
 from app.domain.db import Database
 from app.domain.governance import GovernanceStore
 from app.domain.idempotency import IdempotencyStore
+from app.domain.knowledge_sync import KnowledgeSync
 from app.domain.migrations import apply as apply_migrations
 from app.domain.pipeline import EventPipeline
 from app.domain.tasks import TaskStore
@@ -139,6 +140,7 @@ async def lifespan(application: FastAPI):
 
     knowledge = build_knowledge(settings, db)
     events = EventPipeline(db)
+    knowledge_sync = KnowledgeSync(db, knowledge, events)
     if knowledge.backend == "local" and knowledge.count() == 0:
         bootstrap_event = events.emit("hive2kafka.knowledge_sync", {"mode": "full", "bootstrap": True})
         sync_knowledge(db, knowledge)
@@ -168,6 +170,7 @@ async def lifespan(application: FastAPI):
         settings=settings, db=db, tree=tree, state=state, registry=registry,
         policy=policy, llm=llm, traces=traces, approvals=approvals, tasks=tasks, audio=audio,
         knowledge=knowledge, events=events,
+        knowledge_sync=knowledge_sync,
         session=session, resource_loader=resource_loader,
         idem=idem, governance=governance,
         memories=MemoryStore(db),

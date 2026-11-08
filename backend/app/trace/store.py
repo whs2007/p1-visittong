@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta
@@ -60,7 +61,9 @@ CREATE TABLE IF NOT EXISTS approvals (
   decision_reason TEXT,
   created_at      TEXT NOT NULL,
   decided_at      TEXT,
-  expires_at      TEXT
+  expires_at      TEXT,
+  decision_nonce  TEXT,
+  nonce_used_at   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals(status);
 """
@@ -162,6 +165,7 @@ class TraceStore:
         tool_calls: int = 0,
         tokens_in: int = 0,
         tokens_out: int = 0,
+        cost_usd: float = 0.0,
         error: str | None = None,
     ) -> None:
         finished = now_iso()
@@ -170,8 +174,9 @@ class TraceStore:
             with self._conn() as conn:
                 conn.execute(
                     "UPDATE traces SET status=?, latency_ms=?, tool_calls=?, tokens_in=?,"
-                    " tokens_out=?, error=?, finished_at=? WHERE trace_id=?",
-                    (status, latency_ms, tool_calls, tokens_in, tokens_out, error, finished, trace_id),
+                    " tokens_out=?, cost_usd=?, error=?, finished_at=? WHERE trace_id=?",
+                    (status, latency_ms, tool_calls, tokens_in, tokens_out, round(float(cost_usd or 0), 6),
+                     error, finished, trace_id),
                 )
 
         async with self._write_lock:
@@ -389,22 +394,29 @@ class TraceStore:
         approval_id = new_id("ap")
         created = now_iso()
         expires = (datetime.now().astimezone() + timedelta(seconds=timeout_s)).isoformat(timespec="seconds")
+        # 一次性决策令牌：与审批单绑定、只在一次决策中有效。
+        # 用 token_urlsafe 而不是自增/时间戳——可预测的令牌等于没有令牌。
+        nonce = secrets.token_urlsafe(18)
 
         def _write():
             with self._conn() as conn:
                 conn.execute(
                     "INSERT INTO approvals (approval_id, trace_id, session_id, tool, args, risk, reason,"
-                    " status, requester, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    " status, requester, created_at, expires_at, decision_nonce)"
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         approval_id, trace_id, session_id, tool,
                         json.dumps(args, ensure_ascii=False), risk, reason,
-                        "pending", requester, created, expires,
+                        "pending", requester, created, expires, nonce,
                     ),
                 )
 
         async with self._write_lock:
             await self._run(_write)
-        return {"approval_id": approval_id, "created_at": created, "expires_at": expires}
+        return {
+            "approval_id": approval_id, "created_at": created, "expires_at": expires,
+            "decision_nonce": nonce,
+        }
 
     async def get_approval(self, approval_id: str) -> dict[str, Any] | None:
         def _read():
@@ -439,18 +451,38 @@ class TraceStore:
 
         return await self._run(_read)
 
-    async def decide_approval(self, approval_id: str, decision: str, reason: str = "", approver: str = "") -> bool:
-        """CAS 更新：只有 pending 才能变成终态，返回是否成功（幂等）。"""
+    async def decide_approval(
+        self, approval_id: str, decision: str, reason: str = "", approver: str = "", nonce: str | None = None,
+    ) -> str:
+        """按（状态, 一次性令牌）双条件 CAS 决策。
+
+        返回 `ok / not_found / already_decided / token_invalid / token_missing`。
+        为什么不是 bool：门禁和排查都需要区分「这张单已被处理」和「令牌不对」——
+        前者是重复提交，后者可能是攻击或前端拿了过期的单子，处理方式完全不同。
+        """
         decided = now_iso()
 
-        def _write() -> bool:
+        def _write() -> str:
             with self._conn() as conn:
+                row = conn.execute(
+                    "SELECT status, decision_nonce, nonce_used_at FROM approvals WHERE approval_id=?",
+                    (approval_id,),
+                ).fetchone()
+                if row is None:
+                    return "not_found"
+                if row["status"] != "pending":
+                    return "already_decided"
+                if nonce is None or nonce == "":
+                    return "token_missing"
+                if not nonce or not secrets.compare_digest(str(row["decision_nonce"] or ""), nonce):
+                    return "token_invalid"
                 cur = conn.execute(
-                    "UPDATE approvals SET status=?, approver=?, decision_reason=?, decided_at=?"
-                    " WHERE approval_id=? AND status='pending'",
-                    (decision, approver or None, reason or None, decided, approval_id),
+                    "UPDATE approvals SET status=?, approver=?, decision_reason=?, decided_at=?,"
+                    " nonce_used_at=? WHERE approval_id=? AND status='pending'"
+                    " AND decision_nonce=? AND nonce_used_at IS NULL",
+                    (decision, approver or None, reason or None, decided, decided, approval_id, nonce),
                 )
-                return cur.rowcount == 1
+                return "ok" if cur.rowcount == 1 else "already_decided"
 
         async with self._write_lock:
             return await self._run(_write)
@@ -468,11 +500,15 @@ class TraceStore:
             return await self._run(_write)
 
     def ensure_schema_columns(self) -> None:
-        """轻量迁移：给旧库补 requester（审批发起人）。"""
+        """轻量迁移：给旧库补 requester（审批发起人）与一次性决策令牌两列。"""
         with self._conn() as conn:
             cols = {row[1] for row in conn.execute("PRAGMA table_info(approvals)").fetchall()}
             if "requester" not in cols:
                 conn.execute("ALTER TABLE approvals ADD COLUMN requester TEXT")
+            if "decision_nonce" not in cols:
+                conn.execute("ALTER TABLE approvals ADD COLUMN decision_nonce TEXT")
+            if "nonce_used_at" not in cols:
+                conn.execute("ALTER TABLE approvals ADD COLUMN nonce_used_at TEXT")
 
     async def reconcile_stale(self, *, include_traces: bool = True) -> dict[str, int]:
         """服务启动时收敛上次崩溃遗留的中间态。
