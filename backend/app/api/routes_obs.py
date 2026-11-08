@@ -275,6 +275,17 @@ def _alerts(ctx: AppContext, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
                 "samples": decided,
                 "hint": "审批超时率偏高：检查审批人是否在线 / 超时时间是否短于实际响应时间",
             })
+    # 降级不设样本量门槛：它不是比率，是「能力已经少了一块」的状态事实
+    if ctx.degradations.degraded:
+        alerts.append({
+            "name": "runtime_degraded",
+            "level": "critical" if ctx.degradations.critical else "warning",
+            "value": len(ctx.degradations.items),
+            "threshold": 0,
+            "samples": len(ctx.degradations.items),
+            "hint": "存在降级组件：" + ctx.degradations.summary()
+            + "；critical 表示多实例语义已不成立，不要横向扩容",
+        })
     return alerts
 
 
@@ -308,6 +319,10 @@ def _metrics_snapshot(ctx: AppContext) -> dict[str, Any]:
         },
         "storage": {"db": ctx.db.dialect, "redis": ctx.state.backend, "audio": ctx.audio.backend},
         "pipeline_events": _scalar(ctx, "SELECT COUNT(*) FROM ingest_events"),
+        # 降级台账：启动时汇总一次，这里只做投影（不重新探测，避免指标接口有副作用）
+        "degraded": ctx.degradations.degraded,
+        "degraded_critical": ctx.degradations.critical,
+        "degradations": ctx.degradations.as_dicts(),
         "cost": _cost_summary(ctx),
         "ingest": ctx.knowledge_sync.stats() if ctx.knowledge_sync is not None else {},
     }
@@ -359,6 +374,9 @@ _PROMETHEUS_SPEC: list[tuple[str, str, str]] = [
     ("visittong_cost_usd", "gauge", "Estimated LLM cost in USD (unit price from config)"),
     ("visittong_knowledge_events_pending", "gauge", "Knowledge sync events waiting for the consumer"),
     ("visittong_knowledge_dlq_dead", "gauge", "Knowledge sync dead letters awaiting replay"),
+    # 降级是「能力少了一块」，不是「请求失败了」——不暴露成指标就没人会看
+    ("visittong_degraded", "gauge", "1 when any runtime component degraded to a weaker backend"),
+    ("visittong_degraded_critical", "gauge", "1 when a critical degradation makes multi-instance semantics invalid"),
 ]
 
 
@@ -393,6 +411,8 @@ async def metrics_prometheus(
         "visittong_cost_usd": data["cost"]["totals"]["cost_usd"],
         "visittong_knowledge_events_pending": (data.get("ingest") or {}).get("events", {}).get("pending", 0),
         "visittong_knowledge_dlq_dead": (data.get("ingest") or {}).get("dlq", {}).get("dead", 0),
+        "visittong_degraded": 1 if data["degraded"] else 0,
+        "visittong_degraded_critical": 1 if data["degraded_critical"] else 0,
     }
     lines: list[str] = []
     for name, kind, help_text in _PROMETHEUS_SPEC:

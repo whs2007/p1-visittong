@@ -7,6 +7,7 @@ from typing import Any
 from app.agent.output_guard import OutputGovernor
 from app.approvals import ApprovalManager
 from app.config import Settings
+from app.degradations import DegradationLog
 from app.domain.audio import AudioStore
 from app.domain.db import Database
 from app.domain.governance import GovernanceStore
@@ -46,6 +47,8 @@ class AppContext:
     idem: IdempotencyStore | None = None
     governance: GovernanceStore | None = None
     memories: MemoryStore | None = None
+    # 降级台账：启动时由各组件状态汇总，供 /api/metrics 与 PROM 暴露
+    degradations: DegradationLog = field(default_factory=DegradationLog)
     governor: OutputGovernor | None = None
     login_failures: dict[str, dict[str, float]] = field(default_factory=dict)
     orchestrator: Orchestrator = field(init=False)
@@ -57,6 +60,7 @@ class AppContext:
             self.governor = OutputGovernor(
                 self.db,
                 max_chars=self.settings.tool_output_max_chars,
+                max_tokens=self.settings.tool_output_max_tokens,
                 head_ratio=self.settings.tool_output_head_ratio,
                 redact=self.settings.pii_redact,
             )

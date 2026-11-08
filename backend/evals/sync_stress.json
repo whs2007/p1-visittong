@@ -1,0 +1,38 @@
+{
+  "naive_1t": {
+    "stale_skip": 295,
+    "writes": 105,
+    "lock_errors": 0,
+    "elapsed_ms": 1318.6,
+    "docs": 40,
+    "stale_overwrites": 0,
+    "content_mismatch": 0
+  },
+  "naive_8t": {
+    "stale_skip": 273,
+    "writes": 127,
+    "lock_errors": 0,
+    "elapsed_ms": 885.1,
+    "docs": 40,
+    "stale_overwrites": 7,
+    "content_mismatch": 7
+  },
+  "guarded_1t": {
+    "stale_skip": 295,
+    "writes": 105,
+    "lock_errors": 0,
+    "elapsed_ms": 2449.8,
+    "docs": 40,
+    "stale_overwrites": 0,
+    "content_mismatch": 0
+  },
+  "guarded_8t": {
+    "stale_skip": 284,
+    "writes": 116,
+    "lock_errors": 0,
+    "elapsed_ms": 1473.8,
+    "docs": 40,
+    "stale_overwrites": 0,
+    "content_mismatch": 0
+  }
+}

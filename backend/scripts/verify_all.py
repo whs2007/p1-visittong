@@ -34,15 +34,27 @@ STEPS: list[tuple[str, list[str]]] = [
     # 数据核对：把「简历上的亮点」逐条量一遍。不是又一个测试，而是防止
     # 文档里的百分比与代码实际行为悄悄脱钩（改了阈值却没人更新文档）。
     ("evidence 企业级数据核对", [sys.executable, "backend/scripts/enterprise_evidence.py", "--fast"]),
+    # 检索 A/B：vector（旧）与 hybrid（新）跑同一批标注查询，hybrid 变差就红
+    ("retrieval 检索质量 A/B", [sys.executable, "backend/scripts/retrieval_eval.py",
+                                "--json", "backend/evals/retrieval_eval.json"]),
+    # token 治理：按字符裁 vs 按 token 裁的真实 token 离散度（tiktoken 可选，没装则跳过断言）
+    ("token  token 治理实测", [sys.executable, "backend/scripts/token_governance.py",
+                               "--json", "backend/evals/token_governance.json"]),
+    # 并发压测：先查后写 vs SQL 版本守卫，守卫必须 0 陈旧覆盖
+    ("sync   同步并发压测", [sys.executable, "backend/scripts/sync_stress.py",
+                             "--json", "backend/evals/sync_stress.json"]),
     ("smoke 端到端冒烟", [sys.executable, "backend/scripts/smoke_scenarios.py", "--serve"]),
     ("chaos 崩溃注入", [sys.executable, "backend/scripts/chaos_resume.py"]),
+    # 最后一步查文档：所有「文档里的数字」必须与代码/用例/脚本的真实数字一致。
+    # 放在最后是因为前面的步骤会改变真实数字（用例数、组数），先查等于白查。
+    ("docs  文档一致性", [sys.executable, "backend/scripts/verify_docs.py"]),
 ]
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--fast", action="store_true", help="只跑 lint + test")
-    parser.add_argument("--skip", nargs="*", default=[], help="跳过指定环节：memory / eval / smoke / chaos")
+    parser.add_argument("--skip", nargs="*", default=[], help="跳过指定环节：memory / eval / evidence / retrieval / token / sync / smoke / chaos / docs")
     args = parser.parse_args()
 
     steps = STEPS[:2] if args.fast else STEPS

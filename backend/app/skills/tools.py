@@ -66,12 +66,17 @@ def _resolve_customer(ctx: ToolContext, name: str) -> tuple[dict[str, Any] | Non
     if not rows and name and ctx.knowledge is not None:
         # 精确/别名匹配失败 -> 向量语义兜底（营业执照简称、品牌、地址片段等）
         try:
-            hits = ctx.knowledge.search(name, kind="customer", top_k=3)
+            hits = ctx.knowledge.search(
+                name, kind="customer", top_k=3, min_score=ctx.settings.knowledge_min_score,
+            )
         except RuntimeError:
             hits = []
         semantic = []
         for hit in hits:
-            if hit.get("score", 0) < ctx.settings.knowledge_min_score:
+            # 双门槛：融合分够像（search 已经滤过）+ 覆盖率过半。
+            # 只匹配到「广州」「天河」这种低信息量片段的，宁可回去问一句，
+            # 也不要把「天河北店」自动当成用户说的「天河城百货」。
+            if hit.get("coverage", 1.0) < ctx.settings.knowledge_autobind_coverage:
                 continue
             customer = ctx.db.get_customer(hit.get("ref_id") or "")
             if customer and customer not in semantic:

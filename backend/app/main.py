@@ -25,6 +25,7 @@ from app.api import (
 from app.approvals import ApprovalManager
 from app.config import FRONTEND_DIR, Settings, get_settings
 from app.context import AppContext
+from app.degradations import collect_runtime_degradations
 from app.domain.audio import AudioStore
 from app.domain.db import Database
 from app.domain.governance import GovernanceStore
@@ -175,6 +176,20 @@ async def lifespan(application: FastAPI):
         idem=idem, governance=governance,
         memories=MemoryStore(db),
     )
+    ctx.degradations = collect_runtime_degradations(
+        settings=settings, knowledge=knowledge, state=state, db=db,
+    )
+    if ctx.degradations.degraded:
+        level = log.error if ctx.degradations.critical else log.warning
+        level(
+            "runtime degraded: %s", ctx.degradations.summary(),
+            extra={"event": "degraded", "degradations": ctx.degradations.as_dicts()},
+        )
+    if settings.strict_degrade and ctx.degradations.critical:
+        raise RuntimeError(
+            "STRICT_DEGRADE=1 且存在 critical 降级，拒绝启动："
+            + "; ".join(f"{item.component}:{item.impact}" for item in ctx.degradations.items if item.severity == "critical")
+        )
     application.state.ctx = ctx
     log.info(
         "visittong_ready llm=%s redis=%s auth=%s db=%s agent=%s fingerprint=%s",

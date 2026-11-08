@@ -1,0 +1,131 @@
+{
+  "char_limit": 1600,
+  "token_limit": 900,
+  "estimator_mae": 0.0569,
+  "tiktoken_available": true,
+  "note": "",
+  "rows": [
+    {
+      "sample": "中文客户档案 JSON",
+      "chars": 9803,
+      "est_tokens": 5459,
+      "true_tokens": 4862,
+      "char_cap": {
+        "kept_chars": 1600,
+        "true_tokens": 816,
+        "est_tokens": 898
+      },
+      "token_cap": {
+        "kept_chars": 1476,
+        "true_tokens": 758,
+        "est_tokens": 825
+      }
+    },
+    {
+      "sample": "中文待办 JSON",
+      "chars": 10462,
+      "est_tokens": 5369,
+      "true_tokens": 5442,
+      "char_cap": {
+        "kept_chars": 1600,
+        "true_tokens": 847,
+        "est_tokens": 826
+      },
+      "token_cap": {
+        "kept_chars": 1605,
+        "true_tokens": 848,
+        "est_tokens": 826
+      }
+    },
+    {
+      "sample": "中文长文（知识片段）",
+      "chars": 816,
+      "est_tokens": 898,
+      "true_tokens": 888,
+      "char_cap": {
+        "kept_chars": 816,
+        "true_tokens": 888,
+        "est_tokens": 898
+      },
+      "token_cap": {
+        "kept_chars": 756,
+        "true_tokens": 809,
+        "est_tokens": 815
+      }
+    },
+    {
+      "sample": "英文 JSON",
+      "chars": 4660,
+      "est_tokens": 1819,
+      "true_tokens": 1861,
+      "char_cap": {
+        "kept_chars": 1600,
+        "true_tokens": 669,
+        "est_tokens": 639
+      },
+      "token_cap": {
+        "kept_chars": 2068,
+        "true_tokens": 856,
+        "est_tokens": 823
+      }
+    },
+    {
+      "sample": "单行日志",
+      "chars": 4782,
+      "est_tokens": 1735,
+      "true_tokens": 1739,
+      "char_cap": {
+        "kept_chars": 1600,
+        "true_tokens": 607,
+        "est_tokens": 595
+      },
+      "token_cap": {
+        "kept_chars": 2220,
+        "true_tokens": 839,
+        "est_tokens": 824
+      }
+    },
+    {
+      "sample": "代码片段",
+      "chars": 2183,
+      "est_tokens": 763,
+      "true_tokens": 660,
+      "char_cap": {
+        "kept_chars": 1600,
+        "true_tokens": 517,
+        "est_tokens": 579
+      },
+      "token_cap": {
+        "kept_chars": 2183,
+        "true_tokens": 660,
+        "est_tokens": 763
+      }
+    },
+    {
+      "sample": "混合（中文 + 日志）",
+      "chars": 2310,
+      "est_tokens": 1000,
+      "true_tokens": 1075,
+      "char_cap": {
+        "kept_chars": 1600,
+        "true_tokens": 793,
+        "est_tokens": 740
+      },
+      "token_cap": {
+        "kept_chars": 1812,
+        "true_tokens": 886,
+        "est_tokens": 824
+      }
+    }
+  ],
+  "char_cap_spread": {
+    "min": 517.0,
+    "max": 888.0,
+    "ratio": 1.72
+  },
+  "token_cap_spread": {
+    "min": 660.0,
+    "max": 886.0,
+    "ratio": 1.34
+  }
+}

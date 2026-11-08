@@ -21,6 +21,8 @@ import hashlib
 import re
 from dataclasses import dataclass
 
+from app.agent.tokens import clip_to_tokens, estimate_tokens
+
 # 顺序有意义：身份证 18 位必须排在银行卡 16~19 位之前，否则会先被当卡号吃掉。
 _PII_RULES: tuple[tuple[str, re.Pattern[str], str], ...] = (
     ("phone", re.compile(r"(?<!\d)(1[3-9]\d)\d{4}(\d{4})(?!\d)"), r"\1****\2"),
@@ -42,6 +44,8 @@ class Governed:
     kept_chars: int
     redactions: int
     truncated: bool
+    original_tokens: int = 0
+    kept_tokens: int = 0
 
     @property
     def savings_pct(self) -> float:
@@ -81,11 +85,17 @@ def _clip(text: str, limit: int, head_ratio: float, ref: str | None) -> tuple[st
 class OutputGovernor:
     """无状态治理器：给定输出返回 Governed，超长时把去敏全文落库。"""
 
-    def __init__(self, db, *, max_chars: int = 1600, head_ratio: float = 0.7, redact: bool = True) -> None:
+    def __init__(
+        self, db, *, max_chars: int = 1600, head_ratio: float = 0.7, redact: bool = True,
+        max_tokens: int = 0,
+    ) -> None:
         self.db = db
         self.max_chars = max(200, int(max_chars))
         self.head_ratio = min(0.9, max(0.1, float(head_ratio)))
         self.redact = redact
+        # max_tokens > 0 时按 token 预算裁（默认走这条，见 app/agent/tokens.py 的
+        # 实测：同样的 1600 字符上限，不同输出形态的真实 token 差 1.79 倍）。
+        self.max_tokens = max(0, int(max_tokens))
 
     def govern(
         self,
@@ -103,14 +113,26 @@ class OutputGovernor:
         if self.redact:
             text, hits = redact_pii(text)
 
-        needs_ref = len(text) > self.max_chars
-        ref = self._store(text, tool=tool, trace_id=trace_id, session_id=session_id, user_id=user_id) if needs_ref else None
-        clipped, truncated = _clip(text, self.max_chars, self.head_ratio, ref)
+        original_tokens = estimate_tokens(text)
+        if self.max_tokens > 0:
+            over_budget = original_tokens > self.max_tokens
+            needs_ref = over_budget or len(text) > self.max_chars * 4
+            ref = self._store(
+                text, tool=tool, trace_id=trace_id, session_id=session_id, user_id=user_id,
+            ) if needs_ref else None
+            clipped, truncated = clip_to_tokens(text, self.max_tokens, head_ratio=self.head_ratio, ref=ref)
+        else:
+            needs_ref = len(text) > self.max_chars
+            ref = self._store(
+                text, tool=tool, trace_id=trace_id, session_id=session_id, user_id=user_id,
+            ) if needs_ref else None
+            clipped, truncated = _clip(text, self.max_chars, self.head_ratio, ref)
         clipped, extra = (redact_pii(clipped) if self.redact else (clipped, 0))
         hits += extra
         return Governed(
             text=clipped, ref=ref, original_chars=original, kept_chars=len(clipped),
             redactions=hits, truncated=truncated,
+            original_tokens=original_tokens, kept_tokens=estimate_tokens(clipped),
         )
 
     # ------------------------------------------------------------------ #

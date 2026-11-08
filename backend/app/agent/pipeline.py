@@ -81,6 +81,7 @@ class ToolPipeline:
         self.governor = governor or OutputGovernor(
             db,
             max_chars=settings.tool_output_max_chars,
+            max_tokens=settings.tool_output_max_tokens,
             head_ratio=settings.tool_output_head_ratio,
             redact=settings.pii_redact,
         )

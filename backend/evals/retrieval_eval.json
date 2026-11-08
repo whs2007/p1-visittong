@@ -1,0 +1,4474 @@
+{
+  "cases": 102,
+  "min_score": 0.38,
+  "top_k": 3,
+  "scales": [
+    {
+      "docs": 60,
+      "distractor_pairs": 0,
+      "vector": {
+        "n_queries": 102,
+        "n_positive": 90,
+        "n_negative": 12,
+        "recall_at_1": 0.9111,
+        "recall_at_3": 0.9222,
+        "mrr": 0.9167,
+        "negative_false_positive_rate": 0.0833,
+        "negative_auto_bind_rate": 0.0833,
+        "latency_p50_ms": 2.19,
+        "by_category": {
+          "exact": {
+            "n": 2,
+            "pass": 2,
+            "rate": 1.0
+          },
+          "alias": {
+            "n": 53,
+            "pass": 52,
+            "rate": 0.9811
+          },
+          "natural": {
+            "n": 16,
+            "pass": 14,
+            "rate": 0.875
+          },
+          "address": {
+            "n": 10,
+            "pass": 8,
+            "rate": 0.8
+          },
+          "semantic": {
+            "n": 4,
+            "pass": 1,
+            "rate": 0.25
+          },
+          "distract": {
+            "n": 5,
+            "pass": 5,
+            "rate": 1.0
+          },
+          "negative": {
+            "n": 12,
+            "pass": 11,
+            "rate": 0.9167
+          }
+        }
+      },
+      "hybrid": {
+        "n_queries": 102,
+        "n_positive": 90,
+        "n_negative": 12,
+        "recall_at_1": 0.9667,
+        "recall_at_3": 0.9667,
+        "mrr": 0.9667,
+        "negative_false_positive_rate": 0.0833,
+        "negative_auto_bind_rate": 0.0,
+        "latency_p50_ms": 0.94,
+        "by_category": {
+          "exact": {
+            "n": 2,
+            "pass": 2,
+            "rate": 1.0
+          },
+          "alias": {
+            "n": 53,
+            "pass": 53,
+            "rate": 1.0
+          },
+          "natural": {
+            "n": 16,
+            "pass": 16,
+            "rate": 1.0
+          },
+          "address": {
+            "n": 10,
+            "pass": 10,
+            "rate": 1.0
+          },
+          "semantic": {
+            "n": 4,
+            "pass": 1,
+            "rate": 0.25
+          },
+          "distract": {
+            "n": 5,
+            "pass": 5,
+            "rate": 1.0
+          },
+          "negative": {
+            "n": 12,
+            "pass": 11,
+            "rate": 0.9167
+          }
+        }
+      },
+      "paired": {
+        "table": {
+          "both": 93,
+          "only_a": 0,
+          "only_b": 5,
+          "neither": 4
+        },
+        "mcnemar_p": 0.0625,
+        "delta": -0.049,
+        "delta_ci": [
+          -0.098,
+          -0.0098
+        ]
+      }
+    },
+    {
+      "docs": 1140,
+      "distractor_pairs": 540,
+      "vector": {
+        "n_queries": 102,
+        "n_positive": 90,
+        "n_negative": 12,
+        "recall_at_1": 0.9111,
+        "recall_at_3": 0.9222,
+        "mrr": 0.9167,
+        "negative_false_positive_rate": 0.25,
+        "negative_auto_bind_rate": 0.0833,
+        "latency_p50_ms": 26.89,
+        "by_category": {
+          "exact": {
+            "n": 2,
+            "pass": 2,
+            "rate": 1.0
+          },
+          "alias": {
+            "n": 53,
+            "pass": 52,
+            "rate": 0.9811
+          },
+          "natural": {
+            "n": 16,
+            "pass": 14,
+            "rate": 0.875
+          },
+          "address": {
+            "n": 10,
+            "pass": 8,
+            "rate": 0.8
+          },
+          "semantic": {
+            "n": 4,
+            "pass": 1,
+            "rate": 0.25
+          },
+          "distract": {
+            "n": 5,
+            "pass": 5,
+            "rate": 1.0
+          },
+          "negative": {
+            "n": 12,
+            "pass": 9,
+            "rate": 0.75
+          }
+        }
+      },
+      "hybrid": {
+        "n_queries": 102,
+        "n_positive": 90,
+        "n_negative": 12,
+        "recall_at_1": 0.9667,
+        "recall_at_3": 0.9667,
+        "mrr": 0.9667,
+        "negative_false_positive_rate": 0.0833,
+        "negative_auto_bind_rate": 0.0,
+        "latency_p50_ms": 7.25,
+        "by_category": {
+          "exact": {
+            "n": 2,
+            "pass": 2,
+            "rate": 1.0
+          },
+          "alias": {
+            "n": 53,
+            "pass": 53,
+            "rate": 1.0
+          },
+          "natural": {
+            "n": 16,
+            "pass": 16,
+            "rate": 1.0
+          },
+          "address": {
+            "n": 10,
+            "pass": 10,
+            "rate": 1.0
+          },
+          "semantic": {
+            "n": 4,
+            "pass": 1,
+            "rate": 0.25
+          },
+          "distract": {
+            "n": 5,
+            "pass": 5,
+            "rate": 1.0
+          },
+          "negative": {
+            "n": 12,
+            "pass": 11,
+            "rate": 0.9167
+          }
+        }
+      },
+      "paired": {
+        "table": {
+          "both": 91,
+          "only_a": 0,
+          "only_b": 7,
+          "neither": 4
+        },
+        "mcnemar_p": 0.015625,
+        "delta": -0.0686,
+        "delta_ci": [
+          -0.1176,
+          -0.0196
+        ]
+      }
+    }
+  ],
+  "vector": {
+    "n_queries": 102,
+    "n_positive": 90,
+    "n_negative": 12,
+    "recall_at_1": 0.9111,
+    "recall_at_3": 0.9222,
+    "mrr": 0.9167,
+    "negative_false_positive_rate": 0.25,
+    "negative_auto_bind_rate": 0.0833,
+    "latency_p50_ms": 26.89,
+    "by_category": {
+      "exact": {
+        "n": 2,
+        "pass": 2,
+        "rate": 1.0
+      },
+      "alias": {
+        "n": 53,
+        "pass": 52,
+        "rate": 0.9811
+      },
+      "natural": {
+        "n": 16,
+        "pass": 14,
+        "rate": 0.875
+      },
+      "address": {
+        "n": 10,
+        "pass": 8,
+        "rate": 0.8
+      },
+      "semantic": {
+        "n": 4,
+        "pass": 1,
+        "rate": 0.25
+      },
+      "distract": {
+        "n": 5,
+        "pass": 5,
+        "rate": 1.0
+      },
+      "negative": {
+        "n": 12,
+        "pass": 9,
+        "rate": 0.75
+      }
+    },
+    "rows": [
+      {
+        "id": "q01",
+        "query": "北京字节跳动科技有限公司",
+        "category": "exact",
+        "expect": "c_001",
+        "top1": "c_001",
+        "hits": [
+          "c_001",
+          "c_019",
+          "c_034"
+        ],
+        "scores": [
+          0.9428,
+          0.559,
+          0.5505
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 43.87,
+        "top_coverage": 0.9428,
+        "auto_bind": false
+      },
+      {
+        "id": "q02",
+        "query": "字节跳动",
+        "category": "alias",
+        "expect": "c_001",
+        "top1": "c_001",
+        "hits": [
+          "c_001"
+        ],
+        "scores": [
+          0.7471
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 29.01,
+        "top_coverage": 0.7471,
+        "auto_bind": false
+      },
+      {
+        "id": "q03",
+        "query": "阿里",
+        "category": "alias",
+        "expect": "c_002",
+        "top1": "c_002",
+        "hits": [
+          "c_002"
+        ],
+        "scores": [
+          0.5427
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 28.29,
+        "top_coverage": 0.5427,
+        "auto_bind": false
+      },
+      {
+        "id": "q04",
+        "query": "B站",
+        "category": "alias",
+        "expect": "c_033",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 28.57,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q05",
+        "query": "上次说的那家做光通信的成都公司",
+        "category": "natural",
+        "expect": "c_009",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 38.99,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q06",
+        "query": "上海做医疗器械的迈瑞",
+        "category": "natural",
+        "expect": "c_038",
+        "top1": "c_037",
+        "hits": [
+          "c_037",
+          "c_038",
+          "x335"
+        ],
+        "scores": [
+          0.5528,
+          0.4725,
+          0.4421
+        ],
+        "pass": false,
+        "hit_at_3": true,
+        "latency_ms": 33.77,
+        "top_coverage": 0.5528,
+        "auto_bind": false
+      },
+      {
+        "id": "q07",
+        "query": "杭州做安防的海康威视",
+        "category": "natural",
+        "expect": "c_021",
+        "top1": "c_021",
+        "hits": [
+          "c_021"
+        ],
+        "scores": [
+          0.5536
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 35.58,
+        "top_coverage": 0.5536,
+        "auto_bind": false
+      },
+      {
+        "id": "q08",
+        "query": "京东方",
+        "category": "alias",
+        "expect": "c_027",
+        "top1": "c_027",
+        "hits": [
+          "c_027",
+          "c_039"
+        ],
+        "scores": [
+          0.6685,
+          0.4619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 32.21,
+        "top_coverage": 0.6685,
+        "auto_bind": false
+      },
+      {
+        "id": "q09",
+        "query": "文一西路969号",
+        "category": "address",
+        "expect": "st_002",
+        "top1": "st_002",
+        "hits": [
+          "st_002"
+        ],
+        "scores": [
+          0.442
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 31.85,
+        "top_coverage": 0.442,
+        "auto_bind": false
+      },
+      {
+        "id": "q10",
+        "query": "望京街10号",
+        "category": "address",
+        "expect": "st_011",
+        "top1": "st_011",
+        "hits": [
+          "st_011"
+        ],
+        "scores": [
+          0.5208
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 33.99,
+        "top_coverage": 0.5208,
+        "auto_bind": false
+      },
+      {
+        "id": "q11",
+        "query": "望京店",
+        "category": "alias",
+        "expect": "st_011",
+        "top1": "st_011",
+        "hits": [
+          "st_011"
+        ],
+        "scores": [
+          0.5285
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 29.47,
+        "top_coverage": 0.5285,
+        "auto_bind": false
+      },
+      {
+        "id": "q12",
+        "query": "五道口那个门店",
+        "category": "natural",
+        "expect": "st_012",
+        "top1": "st_012",
+        "hits": [
+          "st_012"
+        ],
+        "scores": [
+          0.4128
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 36.94,
+        "top_coverage": 0.4128,
+        "auto_bind": false
+      },
+      {
+        "id": "q13",
+        "query": "陆家嘴的店",
+        "category": "natural",
+        "expect": "st_013",
+        "top1": "st_013",
+        "hits": [
+          "st_013"
+        ],
+        "scores": [
+          0.462
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 31.97,
+        "top_coverage": 0.462,
+        "auto_bind": false
+      },
+      {
+        "id": "q14",
+        "query": "杭州滨江的门店",
+        "category": "natural",
+        "expect": "st_010",
+        "top1": "st_010",
+        "hits": [
+          "st_010"
+        ],
+        "scores": [
+          0.5415
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 38.8,
+        "top_coverage": 0.5415,
+        "auto_bind": false
+      },
+      {
+        "id": "q15",
+        "query": "深圳市腾讯计算机系统有限公司",
+        "category": "exact",
+        "expect": "c_007",
+        "top1": "c_007",
+        "hits": [
+          "c_007",
+          "c_017"
+        ],
+        "scores": [
+          0.9403,
+          0.405
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 35.39,
+        "top_coverage": 0.9403,
+        "auto_bind": false
+      },
+      {
+        "id": "q16",
+        "query": "拼多多",
+        "category": "alias",
+        "expect": "c_006",
+        "top1": "c_006",
+        "hits": [
+          "c_006"
+        ],
+        "scores": [
+          0.5129
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 35.22,
+        "top_coverage": 0.5129,
+        "auto_bind": false
+      },
+      {
+        "id": "q17",
+        "query": "美团",
+        "category": "alias",
+        "expect": "c_014",
+        "top1": "c_014",
+        "hits": [
+          "c_014"
+        ],
+        "scores": [
+          0.6298
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.16,
+        "top_coverage": 0.6298,
+        "auto_bind": false
+      },
+      {
+        "id": "q18",
+        "query": "滴滴",
+        "category": "alias",
+        "expect": "c_016",
+        "top1": "c_016",
+        "hits": [
+          "c_016"
+        ],
+        "scores": [
+          0.6044
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 35.19,
+        "top_coverage": 0.6044,
+        "auto_bind": false
+      },
+      {
+        "id": "q19",
+        "query": "大疆创新",
+        "category": "alias",
+        "expect": "c_017",
+        "top1": "c_017",
+        "hits": [
+          "c_017"
+        ],
+        "scores": [
+          0.599
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 36.29,
+        "top_coverage": 0.599,
+        "auto_bind": false
+      },
+      {
+        "id": "q20",
+        "query": "成都那家做投影仪的",
+        "category": "semantic",
+        "expect": "c_029",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 25.15,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q21",
+        "query": "伟来汽车",
+        "category": "semantic",
+        "expect": "c_010",
+        "top1": "c_010",
+        "hits": [
+          "c_010"
+        ],
+        "scores": [
+          0.4057
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.63,
+        "top_coverage": 0.4057,
+        "auto_bind": false
+      },
+      {
+        "id": "q22",
+        "query": "海康",
+        "category": "alias",
+        "expect": "c_021",
+        "top1": "c_021",
+        "hits": [
+          "c_021"
+        ],
+        "scores": [
+          0.5066
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 28.85,
+        "top_coverage": 0.5066,
+        "auto_bind": false
+      },
+      {
+        "id": "q23",
+        "query": "用友网络",
+        "category": "alias",
+        "expect": "c_023",
+        "top1": "c_023",
+        "hits": [
+          "c_023"
+        ],
+        "scores": [
+          0.6375
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.39,
+        "top_coverage": 0.6375,
+        "auto_bind": false
+      },
+      {
+        "id": "q24",
+        "query": "金蝶软件",
+        "category": "alias",
+        "expect": "c_024",
+        "top1": "c_024",
+        "hits": [
+          "c_024",
+          "x174",
+          "x414"
+        ],
+        "scores": [
+          0.7157,
+          0.4737,
+          0.4625
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.1,
+        "top_coverage": 0.7157,
+        "auto_bind": false
+      },
+      {
+        "id": "q25",
+        "query": "汇川技术",
+        "category": "alias",
+        "expect": "c_025",
+        "top1": "c_025",
+        "hits": [
+          "c_025"
+        ],
+        "scores": [
+          0.7286
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.97,
+        "top_coverage": 0.7286,
+        "auto_bind": false
+      },
+      {
+        "id": "q26",
+        "query": "上海电气",
+        "category": "alias",
+        "expect": "c_026",
+        "top1": "c_026",
+        "hits": [
+          "c_026"
+        ],
+        "scores": [
+          0.7897
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.99,
+        "top_coverage": 0.7897,
+        "auto_bind": false
+      },
+      {
+        "id": "q27",
+        "query": "华星光电",
+        "category": "alias",
+        "expect": "c_028",
+        "top1": "c_028",
+        "hits": [
+          "c_028"
+        ],
+        "scores": [
+          0.6767
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.2,
+        "top_coverage": 0.6767,
+        "auto_bind": false
+      },
+      {
+        "id": "q28",
+        "query": "极米科技",
+        "category": "alias",
+        "expect": "c_029",
+        "top1": "c_029",
+        "hits": [
+          "c_029"
+        ],
+        "scores": [
+          0.6605
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.8,
+        "top_coverage": 0.6605,
+        "auto_bind": false
+      },
+      {
+        "id": "q29",
+        "query": "石头世纪",
+        "category": "alias",
+        "expect": "c_030",
+        "top1": "c_030",
+        "hits": [
+          "c_030"
+        ],
+        "scores": [
+          0.545
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.09,
+        "top_coverage": 0.545,
+        "auto_bind": false
+      },
+      {
+        "id": "q30",
+        "query": "得物",
+        "category": "alias",
+        "expect": "c_031",
+        "top1": "c_031",
+        "hits": [
+          "c_031"
+        ],
+        "scores": [
+          0.5876
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.06,
+        "top_coverage": 0.5876,
+        "auto_bind": false
+      },
+      {
+        "id": "q31",
+        "query": "小红书",
+        "category": "alias",
+        "expect": "c_032",
+        "top1": "c_032",
+        "hits": [
+          "c_032"
+        ],
+        "scores": [
+          0.7279
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.24,
+        "top_coverage": 0.7279,
+        "auto_bind": false
+      },
+      {
+        "id": "q32",
+        "query": "知乎",
+        "category": "alias",
+        "expect": "c_034",
+        "top1": "c_034",
+        "hits": [
+          "c_034"
+        ],
+        "scores": [
+          0.4932
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.94,
+        "top_coverage": 0.4932,
+        "auto_bind": false
+      },
+      {
+        "id": "q33",
+        "query": "丁香园",
+        "category": "alias",
+        "expect": "c_035",
+        "top1": "c_035",
+        "hits": [
+          "c_035"
+        ],
+        "scores": [
+          0.64
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 28.5,
+        "top_coverage": 0.64,
+        "auto_bind": false
+      },
+      {
+        "id": "q34",
+        "query": "好大夫在线",
+        "category": "alias",
+        "expect": "c_036",
+        "top1": "c_036",
+        "hits": [
+          "c_036"
+        ],
+        "scores": [
+          0.7559
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 29.56,
+        "top_coverage": 0.7559,
+        "auto_bind": false
+      },
+      {
+        "id": "q35",
+        "query": "微创医疗",
+        "category": "alias",
+        "expect": "c_037",
+        "top1": "c_037",
+        "hits": [
+          "c_037",
+          "x323",
+          "x093"
+        ],
+        "scores": [
+          0.7055,
+          0.4095,
+          0.3912
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.03,
+        "top_coverage": 0.7055,
+        "auto_bind": false
+      },
+      {
+        "id": "q36",
+        "query": "京东",
+        "category": "distract",
+        "expect": "c_039",
+        "top1": "c_039",
+        "hits": [
+          "c_039",
+          "c_027"
+        ],
+        "scores": [
+          0.5963,
+          0.5178
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 29.69,
+        "top_coverage": 0.5963,
+        "auto_bind": false
+      },
+      {
+        "id": "q37",
+        "query": "盒马",
+        "category": "alias",
+        "expect": "c_040",
+        "top1": "c_040",
+        "hits": [
+          "c_040"
+        ],
+        "scores": [
+          0.5794
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.51,
+        "top_coverage": 0.5794,
+        "auto_bind": false
+      },
+      {
+        "id": "q38",
+        "query": "快手",
+        "category": "alias",
+        "expect": "c_008",
+        "top1": "c_008",
+        "hits": [
+          "c_008"
+        ],
+        "scores": [
+          0.5634
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 29.57,
+        "top_coverage": 0.5634,
+        "auto_bind": false
+      },
+      {
+        "id": "q39",
+        "query": "网易严选",
+        "category": "alias",
+        "expect": "c_013",
+        "top1": "c_013",
+        "hits": [
+          "c_013"
+        ],
+        "scores": [
+          0.7793
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.73,
+        "top_coverage": 0.7793,
+        "auto_bind": false
+      },
+      {
+        "id": "q40",
+        "query": "携程",
+        "category": "alias",
+        "expect": "c_015",
+        "top1": "c_015",
+        "hits": [
+          "c_015",
+          "x197",
+          "x437"
+        ],
+        "scores": [
+          0.6247,
+          0.477,
+          0.4725
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 30.7,
+        "top_coverage": 0.6247,
+        "auto_bind": false
+      },
+      {
+        "id": "n01",
+        "query": "广州天河城百货",
+        "category": "negative",
+        "expect": null,
+        "top1": "st_009",
+        "hits": [
+          "st_009"
+        ],
+        "scores": [
+          0.5143
+        ],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 26.66,
+        "top_coverage": 0.5143,
+        "auto_bind": true
+      },
+      {
+        "id": "n02",
+        "query": "西安光机所",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.25,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n03",
+        "query": "南京做芯片的公司",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 28.33,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n04",
+        "query": "天津之眼店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 29.46,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n05",
+        "query": "长沙文和友",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.29,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n06",
+        "query": "苏州工业园店",
+        "category": "negative",
+        "expect": null,
+        "top1": "x484",
+        "hits": [
+          "x484",
+          "x508",
+          "x514"
+        ],
+        "scores": [
+          0.4425,
+          0.4377,
+          0.4286
+        ],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 30.21,
+        "top_coverage": 0.4425,
+        "auto_bind": false
+      },
+      {
+        "id": "n07",
+        "query": "厦门鼓浪屿店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.98,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q41",
+        "query": "深圳南山科技园那家店",
+        "category": "natural",
+        "expect": "st_007",
+        "top1": "st_007",
+        "hits": [
+          "st_007",
+          "x083",
+          "x383"
+        ],
+        "scores": [
+          0.6634,
+          0.4343,
+          0.421
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.43,
+        "top_coverage": 0.6634,
+        "auto_bind": false
+      },
+      {
+        "id": "q42",
+        "query": "成都春熙路的门店",
+        "category": "natural",
+        "expect": "st_008",
+        "top1": "st_008",
+        "hits": [
+          "st_008"
+        ],
+        "scores": [
+          0.6241
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.36,
+        "top_coverage": 0.6241,
+        "auto_bind": false
+      },
+      {
+        "id": "q43",
+        "query": "上海南京西路的店",
+        "category": "natural",
+        "expect": "st_006",
+        "top1": "st_006",
+        "hits": [
+          "st_006"
+        ],
+        "scores": [
+          0.6327
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.8,
+        "top_coverage": 0.6327,
+        "auto_bind": false
+      },
+      {
+        "id": "q44",
+        "query": "北京国贸的店",
+        "category": "natural",
+        "expect": "st_016",
+        "top1": "st_016",
+        "hits": [
+          "st_016"
+        ],
+        "scores": [
+          0.5888
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.36,
+        "top_coverage": 0.5888,
+        "auto_bind": false
+      },
+      {
+        "id": "q45",
+        "query": "杭州钱江新城那家",
+        "category": "natural",
+        "expect": "st_020",
+        "top1": "st_020",
+        "hits": [
+          "st_020"
+        ],
+        "scores": [
+          0.5318
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.48,
+        "top_coverage": 0.5318,
+        "auto_bind": false
+      },
+      {
+        "id": "q46",
+        "query": "珠江新城门店",
+        "category": "natural",
+        "expect": "st_019",
+        "top1": "st_019",
+        "hits": [
+          "st_019"
+        ],
+        "scores": [
+          0.5462
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.99,
+        "top_coverage": 0.5462,
+        "auto_bind": false
+      },
+      {
+        "id": "q47",
+        "query": "上地信息路那家",
+        "category": "natural",
+        "expect": "st_003",
+        "top1": "st_003",
+        "hits": [
+          "st_003"
+        ],
+        "scores": [
+          0.4744
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.71,
+        "top_coverage": 0.4744,
+        "auto_bind": false
+      },
+      {
+        "id": "q48",
+        "query": "黄龙体育中心附近的门店",
+        "category": "natural",
+        "expect": "st_005",
+        "top1": "st_005",
+        "hits": [
+          "st_005"
+        ],
+        "scores": [
+          0.4388
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.49,
+        "top_coverage": 0.4388,
+        "auto_bind": false
+      },
+      {
+        "id": "q49",
+        "query": "天府三街的店",
+        "category": "natural",
+        "expect": "st_018",
+        "top1": "st_018",
+        "hits": [
+          "st_018"
+        ],
+        "scores": [
+          0.6768
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.89,
+        "top_coverage": 0.6768,
+        "auto_bind": false
+      },
+      {
+        "id": "q50",
+        "query": "福田区那家店",
+        "category": "natural",
+        "expect": "st_015",
+        "top1": "st_015",
+        "hits": [
+          "st_015"
+        ],
+        "scores": [
+          0.4558
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.65,
+        "top_coverage": 0.4558,
+        "auto_bind": false
+      },
+      {
+        "id": "q51",
+        "query": "中关村大街1号",
+        "category": "address",
+        "expect": "st_001",
+        "top1": "st_001",
+        "hits": [
+          "st_001"
+        ],
+        "scores": [
+          0.6262
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 30.73,
+        "top_coverage": 0.6262,
+        "auto_bind": false
+      },
+      {
+        "id": "q52",
+        "query": "江南大道588号",
+        "category": "address",
+        "expect": "st_010",
+        "top1": "st_010",
+        "hits": [
+          "st_010"
+        ],
+        "scores": [
+          0.5261
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.43,
+        "top_coverage": 0.5261,
+        "auto_bind": false
+      },
+      {
+        "id": "q53",
+        "query": "世纪大道8号",
+        "category": "address",
+        "expect": "st_013",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 24.75,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q54",
+        "query": "南山路147号",
+        "category": "address",
+        "expect": "st_014",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 26.98,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q55",
+        "query": "福华三路88号",
+        "category": "address",
+        "expect": "st_015",
+        "top1": "st_015",
+        "hits": [
+          "st_015"
+        ],
+        "scores": [
+          0.553
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.52,
+        "top_coverage": 0.553,
+        "auto_bind": false
+      },
+      {
+        "id": "q56",
+        "query": "长宁路1018号",
+        "category": "address",
+        "expect": "st_017",
+        "top1": "st_017",
+        "hits": [
+          "st_017"
+        ],
+        "scores": [
+          0.5457
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.87,
+        "top_coverage": 0.5457,
+        "auto_bind": false
+      },
+      {
+        "id": "q57",
+        "query": "成府路28号",
+        "category": "address",
+        "expect": "st_012",
+        "top1": "st_012",
+        "hits": [
+          "st_012"
+        ],
+        "scores": [
+          0.4488
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.42,
+        "top_coverage": 0.4488,
+        "auto_bind": false
+      },
+      {
+        "id": "q58",
+        "query": "建国门外大街1号",
+        "category": "address",
+        "expect": "st_016",
+        "top1": "st_016",
+        "hits": [
+          "st_016"
+        ],
+        "scores": [
+          0.5042
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.64,
+        "top_coverage": 0.5042,
+        "auto_bind": false
+      },
+      {
+        "id": "q59",
+        "query": "寻梦信息",
+        "category": "alias",
+        "expect": "c_006",
+        "top1": "c_006",
+        "hits": [
+          "c_006"
+        ],
+        "scores": [
+          0.4488
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 29.23,
+        "top_coverage": 0.4488,
+        "auto_bind": false
+      },
+      {
+        "id": "q60",
+        "query": "快手科技",
+        "category": "alias",
+        "expect": "c_008",
+        "top1": "c_008",
+        "hits": [
+          "c_008"
+        ],
+        "scores": [
+          0.6639
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 28.16,
+        "top_coverage": 0.6639,
+        "auto_bind": false
+      },
+      {
+        "id": "q61",
+        "query": "新易盛通信",
+        "category": "alias",
+        "expect": "c_009",
+        "top1": "c_009",
+        "hits": [
+          "c_009"
+        ],
+        "scores": [
+          0.7516
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.98,
+        "top_coverage": 0.7516,
+        "auto_bind": false
+      },
+      {
+        "id": "q62",
+        "query": "理想汽车",
+        "category": "alias",
+        "expect": "c_012",
+        "top1": "c_012",
+        "hits": [
+          "c_012"
+        ],
+        "scores": [
+          0.769
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.21,
+        "top_coverage": 0.769,
+        "auto_bind": false
+      },
+      {
+        "id": "q63",
+        "query": "美团科技",
+        "category": "alias",
+        "expect": "c_014",
+        "top1": "c_014",
+        "hits": [
+          "c_014"
+        ],
+        "scores": [
+          0.6872
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.64,
+        "top_coverage": 0.6872,
+        "auto_bind": false
+      },
+      {
+        "id": "q64",
+        "query": "携程商务",
+        "category": "alias",
+        "expect": "c_015",
+        "top1": "c_015",
+        "hits": [
+          "c_015"
+        ],
+        "scores": [
+          0.6816
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.79,
+        "top_coverage": 0.6816,
+        "auto_bind": false
+      },
+      {
+        "id": "q65",
+        "query": "滴滴出行",
+        "category": "alias",
+        "expect": "c_016",
+        "top1": "c_016",
+        "hits": [
+          "c_016"
+        ],
+        "scores": [
+          0.6757
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.89,
+        "top_coverage": 0.6757,
+        "auto_bind": false
+      },
+      {
+        "id": "q66",
+        "query": "商汤科技",
+        "category": "alias",
+        "expect": "c_018",
+        "top1": "c_018",
+        "hits": [
+          "c_018"
+        ],
+        "scores": [
+          0.6583
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.01,
+        "top_coverage": 0.6583,
+        "auto_bind": false
+      },
+      {
+        "id": "q67",
+        "query": "旷视科技",
+        "category": "alias",
+        "expect": "c_019",
+        "top1": "c_019",
+        "hits": [
+          "c_019"
+        ],
+        "scores": [
+          0.6816
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.55,
+        "top_coverage": 0.6816,
+        "auto_bind": false
+      },
+      {
+        "id": "q68",
+        "query": "依图",
+        "category": "alias",
+        "expect": "c_020",
+        "top1": "c_020",
+        "hits": [
+          "c_020"
+        ],
+        "scores": [
+          0.5293
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.75,
+        "top_coverage": 0.5293,
+        "auto_bind": false
+      },
+      {
+        "id": "q69",
+        "query": "大华股份",
+        "category": "alias",
+        "expect": "c_022",
+        "top1": "c_022",
+        "hits": [
+          "c_022"
+        ],
+        "scores": [
+          0.6134
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.86,
+        "top_coverage": 0.6134,
+        "auto_bind": false
+      },
+      {
+        "id": "q70",
+        "query": "用友",
+        "category": "alias",
+        "expect": "c_023",
+        "top1": "c_023",
+        "hits": [
+          "c_023"
+        ],
+        "scores": [
+          0.6029
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 28.24,
+        "top_coverage": 0.6029,
+        "auto_bind": false
+      },
+      {
+        "id": "q71",
+        "query": "金蝶",
+        "category": "alias",
+        "expect": "c_024",
+        "top1": "c_024",
+        "hits": [
+          "c_024"
+        ],
+        "scores": [
+          0.5466
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.26,
+        "top_coverage": 0.5466,
+        "auto_bind": false
+      },
+      {
+        "id": "q72",
+        "query": "汇川",
+        "category": "alias",
+        "expect": "c_025",
+        "top1": "c_025",
+        "hits": [
+          "c_025"
+        ],
+        "scores": [
+          0.5565
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.17,
+        "top_coverage": 0.5565,
+        "auto_bind": false
+      },
+      {
+        "id": "q73",
+        "query": "有赞科技",
+        "category": "alias",
+        "expect": "c_005",
+        "top1": "c_005",
+        "hits": [
+          "c_005"
+        ],
+        "scores": [
+          0.562
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.67,
+        "top_coverage": 0.562,
+        "auto_bind": false
+      },
+      {
+        "id": "q74",
+        "query": "极米",
+        "category": "alias",
+        "expect": "c_029",
+        "top1": "c_029",
+        "hits": [
+          "c_029"
+        ],
+        "scores": [
+          0.6053
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.87,
+        "top_coverage": 0.6053,
+        "auto_bind": false
+      },
+      {
+        "id": "q75",
+        "query": "石头科技",
+        "category": "alias",
+        "expect": "c_030",
+        "top1": "c_030",
+        "hits": [
+          "c_030"
+        ],
+        "scores": [
+          0.569
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.7,
+        "top_coverage": 0.569,
+        "auto_bind": false
+      },
+      {
+        "id": "q76",
+        "query": "得物网络",
+        "category": "alias",
+        "expect": "c_031",
+        "top1": "c_031",
+        "hits": [
+          "c_031"
+        ],
+        "scores": [
+          0.6412
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.15,
+        "top_coverage": 0.6412,
+        "auto_bind": false
+      },
+      {
+        "id": "q77",
+        "query": "哔哩哔哩",
+        "category": "alias",
+        "expect": "c_033",
+        "top1": "c_033",
+        "hits": [
+          "c_033"
+        ],
+        "scores": [
+          0.7904
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.7,
+        "top_coverage": 0.7904,
+        "auto_bind": false
+      },
+      {
+        "id": "q78",
+        "query": "知乎科技",
+        "category": "alias",
+        "expect": "c_034",
+        "top1": "c_034",
+        "hits": [
+          "c_034"
+        ],
+        "scores": [
+          0.6816
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.66,
+        "top_coverage": 0.6816,
+        "auto_bind": false
+      },
+      {
+        "id": "q79",
+        "query": "丁香",
+        "category": "alias",
+        "expect": "c_035",
+        "top1": "c_035",
+        "hits": [
+          "c_035"
+        ],
+        "scores": [
+          0.6197
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.46,
+        "top_coverage": 0.6197,
+        "auto_bind": false
+      },
+      {
+        "id": "q80",
+        "query": "好大夫",
+        "category": "alias",
+        "expect": "c_036",
+        "top1": "c_036",
+        "hits": [
+          "c_036"
+        ],
+        "scores": [
+          0.6761
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.42,
+        "top_coverage": 0.6761,
+        "auto_bind": false
+      },
+      {
+        "id": "q81",
+        "query": "微创",
+        "category": "alias",
+        "expect": "c_037",
+        "top1": "c_037",
+        "hits": [
+          "c_037"
+        ],
+        "scores": [
+          0.4619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.45,
+        "top_coverage": 0.4619,
+        "auto_bind": false
+      },
+      {
+        "id": "q82",
+        "query": "迈瑞",
+        "category": "alias",
+        "expect": "c_038",
+        "top1": "c_038",
+        "hits": [
+          "c_038"
+        ],
+        "scores": [
+          0.4839
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.96,
+        "top_coverage": 0.4839,
+        "auto_bind": false
+      },
+      {
+        "id": "q83",
+        "query": "盒马鲜生",
+        "category": "alias",
+        "expect": "c_040",
+        "top1": "c_040",
+        "hits": [
+          "c_040"
+        ],
+        "scores": [
+          0.5057
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.45,
+        "top_coverage": 0.5057,
+        "auto_bind": false
+      },
+      {
+        "id": "q84",
+        "query": "小红书科技",
+        "category": "alias",
+        "expect": "c_032",
+        "top1": "c_032",
+        "hits": [
+          "c_032"
+        ],
+        "scores": [
+          0.7595
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.79,
+        "top_coverage": 0.7595,
+        "auto_bind": false
+      },
+      {
+        "id": "q85",
+        "query": "京东商城",
+        "category": "distract",
+        "expect": "c_039",
+        "top1": "c_039",
+        "hits": [
+          "c_039"
+        ],
+        "scores": [
+          0.553
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 24.65,
+        "top_coverage": 0.553,
+        "auto_bind": false
+      },
+      {
+        "id": "q86",
+        "query": "京东方科技集团",
+        "category": "distract",
+        "expect": "c_027",
+        "top1": "c_027",
+        "hits": [
+          "c_027",
+          "c_014"
+        ],
+        "scores": [
+          0.7877,
+          0.4034
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.2,
+        "top_coverage": 0.7877,
+        "auto_bind": false
+      },
+      {
+        "id": "q87",
+        "query": "海康威视杭州",
+        "category": "distract",
+        "expect": "c_021",
+        "top1": "c_021",
+        "hits": [
+          "c_021"
+        ],
+        "scores": [
+          0.6615
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.02,
+        "top_coverage": 0.6615,
+        "auto_bind": false
+      },
+      {
+        "id": "q88",
+        "query": "大华",
+        "category": "distract",
+        "expect": "c_022",
+        "top1": "c_022",
+        "hits": [
+          "c_022"
+        ],
+        "scores": [
+          0.5206
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 26.14,
+        "top_coverage": 0.5206,
+        "auto_bind": false
+      },
+      {
+        "id": "q89",
+        "query": "做扫地机器人的公司",
+        "category": "semantic",
+        "expect": "c_030",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 24.88,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q90",
+        "query": "抖音的母公司",
+        "category": "semantic",
+        "expect": "c_001",
+        "top1": "x181",
+        "hits": [
+          "x181",
+          "x421"
+        ],
+        "scores": [
+          0.3979,
+          0.3979
+        ],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 26.44,
+        "top_coverage": 0.3979,
+        "auto_bind": false
+      },
+      {
+        "id": "q91",
+        "query": "重庆火锅店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 28.64,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q92",
+        "query": "青岛海尔工业园店",
+        "category": "negative",
+        "expect": null,
+        "top1": "x268",
+        "hits": [
+          "x268",
+          "x292",
+          "x436"
+        ],
+        "scores": [
+          0.4881,
+          0.4881,
+          0.4881
+        ],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 27.0,
+        "top_coverage": 0.4881,
+        "auto_bind": false
+      },
+      {
+        "id": "q93",
+        "query": "无锡做光伏的公司",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.2,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q94",
+        "query": "佛山家具城店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 27.15,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q95",
+        "query": "珠海格力电器",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 25.59,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      }
+    ]
+  },
+  "hybrid": {
+    "n_queries": 102,
+    "n_positive": 90,
+    "n_negative": 12,
+    "recall_at_1": 0.9667,
+    "recall_at_3": 0.9667,
+    "mrr": 0.9667,
+    "negative_false_positive_rate": 0.0833,
+    "negative_auto_bind_rate": 0.0,
+    "latency_p50_ms": 7.25,
+    "by_category": {
+      "exact": {
+        "n": 2,
+        "pass": 2,
+        "rate": 1.0
+      },
+      "alias": {
+        "n": 53,
+        "pass": 53,
+        "rate": 1.0
+      },
+      "natural": {
+        "n": 16,
+        "pass": 16,
+        "rate": 1.0
+      },
+      "address": {
+        "n": 10,
+        "pass": 10,
+        "rate": 1.0
+      },
+      "semantic": {
+        "n": 4,
+        "pass": 1,
+        "rate": 0.25
+      },
+      "distract": {
+        "n": 5,
+        "pass": 5,
+        "rate": 1.0
+      },
+      "negative": {
+        "n": 12,
+        "pass": 11,
+        "rate": 0.9167
+      }
+    },
+    "rows": [
+      {
+        "id": "q01",
+        "query": "北京字节跳动科技有限公司",
+        "category": "exact",
+        "expect": "c_001",
+        "top1": "c_001",
+        "hits": [
+          "c_001"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 18.79,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q02",
+        "query": "字节跳动",
+        "category": "alias",
+        "expect": "c_001",
+        "top1": "c_001",
+        "hits": [
+          "c_001"
+        ],
+        "scores": [
+          0.7877
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.42,
+        "top_coverage": 0.717,
+        "auto_bind": false
+      },
+      {
+        "id": "q03",
+        "query": "阿里",
+        "category": "alias",
+        "expect": "c_002",
+        "top1": "c_002",
+        "hits": [
+          "c_002"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 5.86,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q04",
+        "query": "B站",
+        "category": "alias",
+        "expect": "c_033",
+        "top1": "c_033",
+        "hits": [
+          "c_033"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.89,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q05",
+        "query": "上次说的那家做光通信的成都公司",
+        "category": "natural",
+        "expect": "c_009",
+        "top1": "c_009",
+        "hits": [
+          "c_009"
+        ],
+        "scores": [
+          0.3981
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.61,
+        "top_coverage": 0.1975,
+        "auto_bind": false
+      },
+      {
+        "id": "q06",
+        "query": "上海做医疗器械的迈瑞",
+        "category": "natural",
+        "expect": "c_038",
+        "top1": "c_038",
+        "hits": [
+          "c_038",
+          "c_037"
+        ],
+        "scores": [
+          0.5504,
+          0.4682
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.57,
+        "top_coverage": 0.4005,
+        "auto_bind": false
+      },
+      {
+        "id": "q07",
+        "query": "杭州做安防的海康威视",
+        "category": "natural",
+        "expect": "c_021",
+        "top1": "c_021",
+        "hits": [
+          "c_021"
+        ],
+        "scores": [
+          0.606
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.29,
+        "top_coverage": 0.4747,
+        "auto_bind": false
+      },
+      {
+        "id": "q08",
+        "query": "京东方",
+        "category": "alias",
+        "expect": "c_027",
+        "top1": "c_027",
+        "hits": [
+          "c_027"
+        ],
+        "scores": [
+          0.7133
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.81,
+        "top_coverage": 0.6178,
+        "auto_bind": false
+      },
+      {
+        "id": "q09",
+        "query": "文一西路969号",
+        "category": "address",
+        "expect": "st_002",
+        "top1": "st_002",
+        "hits": [
+          "st_002"
+        ],
+        "scores": [
+          0.8888
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 86.46,
+        "top_coverage": 0.8517,
+        "auto_bind": false
+      },
+      {
+        "id": "q10",
+        "query": "望京街10号",
+        "category": "address",
+        "expect": "st_011",
+        "top1": "st_011",
+        "hits": [
+          "st_011"
+        ],
+        "scores": [
+          0.8221
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.91,
+        "top_coverage": 0.7628,
+        "auto_bind": false
+      },
+      {
+        "id": "q11",
+        "query": "望京店",
+        "category": "alias",
+        "expect": "st_011",
+        "top1": "st_011",
+        "hits": [
+          "st_011"
+        ],
+        "scores": [
+          0.4725
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.17,
+        "top_coverage": 0.2967,
+        "auto_bind": false
+      },
+      {
+        "id": "q12",
+        "query": "五道口那个门店",
+        "category": "natural",
+        "expect": "st_012",
+        "top1": "st_012",
+        "hits": [
+          "st_012"
+        ],
+        "scores": [
+          0.4392
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.03,
+        "top_coverage": 0.2523,
+        "auto_bind": false
+      },
+      {
+        "id": "q13",
+        "query": "陆家嘴的店",
+        "category": "natural",
+        "expect": "st_013",
+        "top1": "st_013",
+        "hits": [
+          "st_013"
+        ],
+        "scores": [
+          0.52
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.71,
+        "top_coverage": 0.3599,
+        "auto_bind": false
+      },
+      {
+        "id": "q14",
+        "query": "杭州滨江的门店",
+        "category": "natural",
+        "expect": "st_010",
+        "top1": "st_010",
+        "hits": [
+          "st_010"
+        ],
+        "scores": [
+          0.3902
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.07,
+        "top_coverage": 0.1869,
+        "auto_bind": false
+      },
+      {
+        "id": "q15",
+        "query": "深圳市腾讯计算机系统有限公司",
+        "category": "exact",
+        "expect": "c_007",
+        "top1": "c_007",
+        "hits": [
+          "c_007"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.09,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q16",
+        "query": "拼多多",
+        "category": "alias",
+        "expect": "c_006",
+        "top1": "c_006",
+        "hits": [
+          "c_006"
+        ],
+        "scores": [
+          0.7211
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 12.3,
+        "top_coverage": 0.6281,
+        "auto_bind": false
+      },
+      {
+        "id": "q17",
+        "query": "美团",
+        "category": "alias",
+        "expect": "c_014",
+        "top1": "c_014",
+        "hits": [
+          "c_014"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.57,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q18",
+        "query": "滴滴",
+        "category": "alias",
+        "expect": "c_016",
+        "top1": "c_016",
+        "hits": [
+          "c_016"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.42,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q19",
+        "query": "大疆创新",
+        "category": "alias",
+        "expect": "c_017",
+        "top1": "c_017",
+        "hits": [
+          "c_017"
+        ],
+        "scores": [
+          0.7877
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.08,
+        "top_coverage": 0.717,
+        "auto_bind": false
+      },
+      {
+        "id": "q20",
+        "query": "成都那家做投影仪的",
+        "category": "semantic",
+        "expect": "c_029",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 5.88,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q21",
+        "query": "伟来汽车",
+        "category": "semantic",
+        "expect": "c_010",
+        "top1": "c_010",
+        "hits": [
+          "c_010"
+        ],
+        "scores": [
+          0.5797
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.65,
+        "top_coverage": 0.4396,
+        "auto_bind": false
+      },
+      {
+        "id": "q22",
+        "query": "海康",
+        "category": "alias",
+        "expect": "c_021",
+        "top1": "c_021",
+        "hits": [
+          "c_021"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.24,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q23",
+        "query": "用友网络",
+        "category": "alias",
+        "expect": "c_023",
+        "top1": "c_023",
+        "hits": [
+          "c_023"
+        ],
+        "scores": [
+          0.7779
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.34,
+        "top_coverage": 0.7039,
+        "auto_bind": false
+      },
+      {
+        "id": "q24",
+        "query": "金蝶软件",
+        "category": "alias",
+        "expect": "c_024",
+        "top1": "c_024",
+        "hits": [
+          "c_024"
+        ],
+        "scores": [
+          0.7548
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.73,
+        "top_coverage": 0.6731,
+        "auto_bind": false
+      },
+      {
+        "id": "q25",
+        "query": "汇川技术",
+        "category": "alias",
+        "expect": "c_025",
+        "top1": "c_025",
+        "hits": [
+          "c_025"
+        ],
+        "scores": [
+          0.7745
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.44,
+        "top_coverage": 0.6993,
+        "auto_bind": false
+      },
+      {
+        "id": "q26",
+        "query": "上海电气",
+        "category": "alias",
+        "expect": "c_026",
+        "top1": "c_026",
+        "hits": [
+          "c_026"
+        ],
+        "scores": [
+          0.7329
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.99,
+        "top_coverage": 0.6439,
+        "auto_bind": false
+      },
+      {
+        "id": "q27",
+        "query": "华星光电",
+        "category": "alias",
+        "expect": "c_028",
+        "top1": "c_028",
+        "hits": [
+          "c_028"
+        ],
+        "scores": [
+          0.7877
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.15,
+        "top_coverage": 0.717,
+        "auto_bind": false
+      },
+      {
+        "id": "q28",
+        "query": "极米科技",
+        "category": "alias",
+        "expect": "c_029",
+        "top1": "c_029",
+        "hits": [
+          "c_029"
+        ],
+        "scores": [
+          0.7619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.11,
+        "top_coverage": 0.6825,
+        "auto_bind": false
+      },
+      {
+        "id": "q29",
+        "query": "石头世纪",
+        "category": "alias",
+        "expect": "c_030",
+        "top1": "c_030",
+        "hits": [
+          "c_030"
+        ],
+        "scores": [
+          0.7833
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.35,
+        "top_coverage": 0.711,
+        "auto_bind": false
+      },
+      {
+        "id": "q30",
+        "query": "得物",
+        "category": "alias",
+        "expect": "c_031",
+        "top1": "c_031",
+        "hits": [
+          "c_031"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.71,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q31",
+        "query": "小红书",
+        "category": "alias",
+        "expect": "c_032",
+        "top1": "c_032",
+        "hits": [
+          "c_032"
+        ],
+        "scores": [
+          0.7211
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.73,
+        "top_coverage": 0.6281,
+        "auto_bind": false
+      },
+      {
+        "id": "q32",
+        "query": "知乎",
+        "category": "alias",
+        "expect": "c_034",
+        "top1": "c_034",
+        "hits": [
+          "c_034"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.05,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q33",
+        "query": "丁香园",
+        "category": "alias",
+        "expect": "c_035",
+        "top1": "c_035",
+        "hits": [
+          "c_035"
+        ],
+        "scores": [
+          0.7211
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.6,
+        "top_coverage": 0.6281,
+        "auto_bind": false
+      },
+      {
+        "id": "q34",
+        "query": "好大夫在线",
+        "category": "alias",
+        "expect": "c_036",
+        "top1": "c_036",
+        "hits": [
+          "c_036"
+        ],
+        "scores": [
+          0.8287
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.22,
+        "top_coverage": 0.7716,
+        "auto_bind": false
+      },
+      {
+        "id": "q35",
+        "query": "微创医疗",
+        "category": "alias",
+        "expect": "c_037",
+        "top1": "c_037",
+        "hits": [
+          "c_037"
+        ],
+        "scores": [
+          0.7543
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 10.53,
+        "top_coverage": 0.6724,
+        "auto_bind": false
+      },
+      {
+        "id": "q36",
+        "query": "京东",
+        "category": "distract",
+        "expect": "c_039",
+        "top1": "c_039",
+        "hits": [
+          "c_039",
+          "c_027"
+        ],
+        "scores": [
+          1.0,
+          0.9852
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.2,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q37",
+        "query": "盒马",
+        "category": "alias",
+        "expect": "c_040",
+        "top1": "c_040",
+        "hits": [
+          "c_040"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.0,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q38",
+        "query": "快手",
+        "category": "alias",
+        "expect": "c_008",
+        "top1": "c_008",
+        "hits": [
+          "c_008"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 10.23,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q39",
+        "query": "网易严选",
+        "category": "alias",
+        "expect": "c_013",
+        "top1": "c_013",
+        "hits": [
+          "c_013"
+        ],
+        "scores": [
+          0.7877
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 10.03,
+        "top_coverage": 0.717,
+        "auto_bind": false
+      },
+      {
+        "id": "q40",
+        "query": "携程",
+        "category": "alias",
+        "expect": "c_015",
+        "top1": "c_015",
+        "hits": [
+          "c_015"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.68,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n01",
+        "query": "广州天河城百货",
+        "category": "negative",
+        "expect": null,
+        "top1": "st_009",
+        "hits": [
+          "st_009"
+        ],
+        "scores": [
+          0.4268
+        ],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 8.18,
+        "top_coverage": 0.2357,
+        "auto_bind": false
+      },
+      {
+        "id": "n02",
+        "query": "西安光机所",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.77,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n03",
+        "query": "南京做芯片的公司",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.78,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n04",
+        "query": "天津之眼店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.49,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n05",
+        "query": "长沙文和友",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.1,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n06",
+        "query": "苏州工业园店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.31,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "n07",
+        "query": "厦门鼓浪屿店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.77,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q41",
+        "query": "深圳南山科技园那家店",
+        "category": "natural",
+        "expect": "st_007",
+        "top1": "st_007",
+        "hits": [
+          "st_007"
+        ],
+        "scores": [
+          0.4687
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.04,
+        "top_coverage": 0.2916,
+        "auto_bind": false
+      },
+      {
+        "id": "q42",
+        "query": "成都春熙路的门店",
+        "category": "natural",
+        "expect": "st_008",
+        "top1": "st_008",
+        "hits": [
+          "st_008"
+        ],
+        "scores": [
+          0.4972
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.43,
+        "top_coverage": 0.3296,
+        "auto_bind": false
+      },
+      {
+        "id": "q43",
+        "query": "上海南京西路的店",
+        "category": "natural",
+        "expect": "st_006",
+        "top1": "st_006",
+        "hits": [
+          "st_006"
+        ],
+        "scores": [
+          0.5439
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.23,
+        "top_coverage": 0.3918,
+        "auto_bind": false
+      },
+      {
+        "id": "q44",
+        "query": "北京国贸的店",
+        "category": "natural",
+        "expect": "st_016",
+        "top1": "st_016",
+        "hits": [
+          "st_016"
+        ],
+        "scores": [
+          0.3952
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.71,
+        "top_coverage": 0.1937,
+        "auto_bind": false
+      },
+      {
+        "id": "q45",
+        "query": "杭州钱江新城那家",
+        "category": "natural",
+        "expect": "st_020",
+        "top1": "st_020",
+        "hits": [
+          "st_020"
+        ],
+        "scores": [
+          0.5143
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.59,
+        "top_coverage": 0.3524,
+        "auto_bind": false
+      },
+      {
+        "id": "q46",
+        "query": "珠江新城门店",
+        "category": "natural",
+        "expect": "st_019",
+        "top1": "st_019",
+        "hits": [
+          "st_019"
+        ],
+        "scores": [
+          0.5381
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.57,
+        "top_coverage": 0.3841,
+        "auto_bind": false
+      },
+      {
+        "id": "q47",
+        "query": "上地信息路那家",
+        "category": "natural",
+        "expect": "st_003",
+        "top1": "st_003",
+        "hits": [
+          "st_003"
+        ],
+        "scores": [
+          0.647
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.54,
+        "top_coverage": 0.5294,
+        "auto_bind": false
+      },
+      {
+        "id": "q48",
+        "query": "黄龙体育中心附近的门店",
+        "category": "natural",
+        "expect": "st_005",
+        "top1": "st_005",
+        "hits": [
+          "st_005"
+        ],
+        "scores": [
+          0.5932
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.65,
+        "top_coverage": 0.4576,
+        "auto_bind": false
+      },
+      {
+        "id": "q49",
+        "query": "天府三街的店",
+        "category": "natural",
+        "expect": "st_018",
+        "top1": "st_018",
+        "hits": [
+          "st_018"
+        ],
+        "scores": [
+          0.5932
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 11.55,
+        "top_coverage": 0.4576,
+        "auto_bind": false
+      },
+      {
+        "id": "q50",
+        "query": "福田区那家店",
+        "category": "natural",
+        "expect": "st_015",
+        "top1": "st_015",
+        "hits": [
+          "st_015"
+        ],
+        "scores": [
+          0.4725
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.21,
+        "top_coverage": 0.2967,
+        "auto_bind": false
+      },
+      {
+        "id": "q51",
+        "query": "中关村大街1号",
+        "category": "address",
+        "expect": "st_001",
+        "top1": "st_001",
+        "hits": [
+          "st_001",
+          "st_016"
+        ],
+        "scores": [
+          0.8774,
+          0.4266
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.59,
+        "top_coverage": 0.8366,
+        "auto_bind": false
+      },
+      {
+        "id": "q52",
+        "query": "江南大道588号",
+        "category": "address",
+        "expect": "st_010",
+        "top1": "st_010",
+        "hits": [
+          "st_010",
+          "x488"
+        ],
+        "scores": [
+          0.8685,
+          0.3989
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 10.34,
+        "top_coverage": 0.8246,
+        "auto_bind": false
+      },
+      {
+        "id": "q53",
+        "query": "世纪大道8号",
+        "category": "address",
+        "expect": "st_013",
+        "top1": "st_013",
+        "hits": [
+          "st_013"
+        ],
+        "scores": [
+          0.8472
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.1,
+        "top_coverage": 0.7963,
+        "auto_bind": false
+      },
+      {
+        "id": "q54",
+        "query": "南山路147号",
+        "category": "address",
+        "expect": "st_014",
+        "top1": "st_014",
+        "hits": [
+          "st_014",
+          "x047"
+        ],
+        "scores": [
+          0.849,
+          0.4919
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.92,
+        "top_coverage": 0.7987,
+        "auto_bind": false
+      },
+      {
+        "id": "q55",
+        "query": "福华三路88号",
+        "category": "address",
+        "expect": "st_015",
+        "top1": "st_015",
+        "hits": [
+          "st_015"
+        ],
+        "scores": [
+          0.8566
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.63,
+        "top_coverage": 0.8087,
+        "auto_bind": false
+      },
+      {
+        "id": "q56",
+        "query": "长宁路1018号",
+        "category": "address",
+        "expect": "st_017",
+        "top1": "st_017",
+        "hits": [
+          "st_017"
+        ],
+        "scores": [
+          0.8673
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.38,
+        "top_coverage": 0.8231,
+        "auto_bind": false
+      },
+      {
+        "id": "q57",
+        "query": "成府路28号",
+        "category": "address",
+        "expect": "st_012",
+        "top1": "st_012",
+        "hits": [
+          "st_012"
+        ],
+        "scores": [
+          0.8001
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.97,
+        "top_coverage": 0.7334,
+        "auto_bind": false
+      },
+      {
+        "id": "q58",
+        "query": "建国门外大街1号",
+        "category": "address",
+        "expect": "st_016",
+        "top1": "st_016",
+        "hits": [
+          "st_016",
+          "st_001"
+        ],
+        "scores": [
+          0.8923,
+          0.3856
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.07,
+        "top_coverage": 0.8564,
+        "auto_bind": false
+      },
+      {
+        "id": "q59",
+        "query": "寻梦信息",
+        "category": "alias",
+        "expect": "c_006",
+        "top1": "c_006",
+        "hits": [
+          "c_006"
+        ],
+        "scores": [
+          0.7877
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 12.78,
+        "top_coverage": 0.717,
+        "auto_bind": false
+      },
+      {
+        "id": "q60",
+        "query": "快手科技",
+        "category": "alias",
+        "expect": "c_008",
+        "top1": "c_008",
+        "hits": [
+          "c_008"
+        ],
+        "scores": [
+          0.7619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.65,
+        "top_coverage": 0.6825,
+        "auto_bind": false
+      },
+      {
+        "id": "q61",
+        "query": "新易盛通信",
+        "category": "alias",
+        "expect": "c_009",
+        "top1": "c_009",
+        "hits": [
+          "c_009"
+        ],
+        "scores": [
+          0.8287
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.32,
+        "top_coverage": 0.7716,
+        "auto_bind": false
+      },
+      {
+        "id": "q62",
+        "query": "理想汽车",
+        "category": "alias",
+        "expect": "c_012",
+        "top1": "c_012",
+        "hits": [
+          "c_012"
+        ],
+        "scores": [
+          0.7803
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.44,
+        "top_coverage": 0.707,
+        "auto_bind": false
+      },
+      {
+        "id": "q63",
+        "query": "美团科技",
+        "category": "alias",
+        "expect": "c_014",
+        "top1": "c_014",
+        "hits": [
+          "c_014"
+        ],
+        "scores": [
+          0.7619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.25,
+        "top_coverage": 0.6825,
+        "auto_bind": false
+      },
+      {
+        "id": "q64",
+        "query": "携程商务",
+        "category": "alias",
+        "expect": "c_015",
+        "top1": "c_015",
+        "hits": [
+          "c_015"
+        ],
+        "scores": [
+          0.7877
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.18,
+        "top_coverage": 0.717,
+        "auto_bind": false
+      },
+      {
+        "id": "q65",
+        "query": "滴滴出行",
+        "category": "alias",
+        "expect": "c_016",
+        "top1": "c_016",
+        "hits": [
+          "c_016"
+        ],
+        "scores": [
+          0.7877
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 9.85,
+        "top_coverage": 0.717,
+        "auto_bind": false
+      },
+      {
+        "id": "q66",
+        "query": "商汤科技",
+        "category": "alias",
+        "expect": "c_018",
+        "top1": "c_018",
+        "hits": [
+          "c_018"
+        ],
+        "scores": [
+          0.7619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.86,
+        "top_coverage": 0.6825,
+        "auto_bind": false
+      },
+      {
+        "id": "q67",
+        "query": "旷视科技",
+        "category": "alias",
+        "expect": "c_019",
+        "top1": "c_019",
+        "hits": [
+          "c_019"
+        ],
+        "scores": [
+          0.7619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 11.32,
+        "top_coverage": 0.6825,
+        "auto_bind": false
+      },
+      {
+        "id": "q68",
+        "query": "依图",
+        "category": "alias",
+        "expect": "c_020",
+        "top1": "c_020",
+        "hits": [
+          "c_020"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.63,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q69",
+        "query": "大华股份",
+        "category": "alias",
+        "expect": "c_022",
+        "top1": "c_022",
+        "hits": [
+          "c_022"
+        ],
+        "scores": [
+          0.7697
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.2,
+        "top_coverage": 0.693,
+        "auto_bind": false
+      },
+      {
+        "id": "q70",
+        "query": "用友",
+        "category": "alias",
+        "expect": "c_023",
+        "top1": "c_023",
+        "hits": [
+          "c_023"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.22,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q71",
+        "query": "金蝶",
+        "category": "alias",
+        "expect": "c_024",
+        "top1": "c_024",
+        "hits": [
+          "c_024"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.26,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q72",
+        "query": "汇川",
+        "category": "alias",
+        "expect": "c_025",
+        "top1": "c_025",
+        "hits": [
+          "c_025"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.65,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q73",
+        "query": "有赞科技",
+        "category": "alias",
+        "expect": "c_005",
+        "top1": "c_005",
+        "hits": [
+          "c_005"
+        ],
+        "scores": [
+          0.7619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.32,
+        "top_coverage": 0.6825,
+        "auto_bind": false
+      },
+      {
+        "id": "q74",
+        "query": "极米",
+        "category": "alias",
+        "expect": "c_029",
+        "top1": "c_029",
+        "hits": [
+          "c_029"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.06,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q75",
+        "query": "石头科技",
+        "category": "alias",
+        "expect": "c_030",
+        "top1": "c_030",
+        "hits": [
+          "c_030"
+        ],
+        "scores": [
+          0.7619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.04,
+        "top_coverage": 0.6825,
+        "auto_bind": false
+      },
+      {
+        "id": "q76",
+        "query": "得物网络",
+        "category": "alias",
+        "expect": "c_031",
+        "top1": "c_031",
+        "hits": [
+          "c_031"
+        ],
+        "scores": [
+          0.7779
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.13,
+        "top_coverage": 0.7039,
+        "auto_bind": false
+      },
+      {
+        "id": "q77",
+        "query": "哔哩哔哩",
+        "category": "alias",
+        "expect": "c_033",
+        "top1": "c_033",
+        "hits": [
+          "c_033"
+        ],
+        "scores": [
+          0.7211
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.16,
+        "top_coverage": 0.6281,
+        "auto_bind": false
+      },
+      {
+        "id": "q78",
+        "query": "知乎科技",
+        "category": "alias",
+        "expect": "c_034",
+        "top1": "c_034",
+        "hits": [
+          "c_034"
+        ],
+        "scores": [
+          0.7619
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.78,
+        "top_coverage": 0.6825,
+        "auto_bind": false
+      },
+      {
+        "id": "q79",
+        "query": "丁香",
+        "category": "alias",
+        "expect": "c_035",
+        "top1": "c_035",
+        "hits": [
+          "c_035"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.47,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q80",
+        "query": "好大夫",
+        "category": "alias",
+        "expect": "c_036",
+        "top1": "c_036",
+        "hits": [
+          "c_036"
+        ],
+        "scores": [
+          0.7211
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 11.12,
+        "top_coverage": 0.6281,
+        "auto_bind": false
+      },
+      {
+        "id": "q81",
+        "query": "微创",
+        "category": "alias",
+        "expect": "c_037",
+        "top1": "c_037",
+        "hits": [
+          "c_037"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.22,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q82",
+        "query": "迈瑞",
+        "category": "alias",
+        "expect": "c_038",
+        "top1": "c_038",
+        "hits": [
+          "c_038"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.04,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q83",
+        "query": "盒马鲜生",
+        "category": "alias",
+        "expect": "c_040",
+        "top1": "c_040",
+        "hits": [
+          "c_040"
+        ],
+        "scores": [
+          0.7877
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.21,
+        "top_coverage": 0.717,
+        "auto_bind": false
+      },
+      {
+        "id": "q84",
+        "query": "小红书科技",
+        "category": "alias",
+        "expect": "c_032",
+        "top1": "c_032",
+        "hits": [
+          "c_032"
+        ],
+        "scores": [
+          0.8122
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.82,
+        "top_coverage": 0.7496,
+        "auto_bind": false
+      },
+      {
+        "id": "q85",
+        "query": "京东商城",
+        "category": "distract",
+        "expect": "c_039",
+        "top1": "c_039",
+        "hits": [
+          "c_039",
+          "c_027"
+        ],
+        "scores": [
+          0.4035,
+          0.3887
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.86,
+        "top_coverage": 0.2047,
+        "auto_bind": false
+      },
+      {
+        "id": "q86",
+        "query": "京东方科技集团",
+        "category": "distract",
+        "expect": "c_027",
+        "top1": "c_027",
+        "hits": [
+          "c_027"
+        ],
+        "scores": [
+          0.8646
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.66,
+        "top_coverage": 0.8194,
+        "auto_bind": false
+      },
+      {
+        "id": "q87",
+        "query": "海康威视杭州",
+        "category": "distract",
+        "expect": "c_021",
+        "top1": "c_021",
+        "hits": [
+          "c_021"
+        ],
+        "scores": [
+          0.6902
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 8.53,
+        "top_coverage": 0.587,
+        "auto_bind": false
+      },
+      {
+        "id": "q88",
+        "query": "大华",
+        "category": "distract",
+        "expect": "c_022",
+        "top1": "c_022",
+        "hits": [
+          "c_022"
+        ],
+        "scores": [
+          1.0
+        ],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.54,
+        "top_coverage": 1.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q89",
+        "query": "做扫地机器人的公司",
+        "category": "semantic",
+        "expect": "c_030",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 7.24,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q90",
+        "query": "抖音的母公司",
+        "category": "semantic",
+        "expect": "c_001",
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": false,
+        "hit_at_3": false,
+        "latency_ms": 9.92,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q91",
+        "query": "重庆火锅店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.03,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q92",
+        "query": "青岛海尔工业园店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 7.51,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q93",
+        "query": "无锡做光伏的公司",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 43.8,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q94",
+        "query": "佛山家具城店",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.92,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      },
+      {
+        "id": "q95",
+        "query": "珠海格力电器",
+        "category": "negative",
+        "expect": null,
+        "top1": null,
+        "hits": [],
+        "scores": [],
+        "pass": true,
+        "hit_at_3": true,
+        "latency_ms": 6.96,
+        "top_coverage": 0.0,
+        "auto_bind": false
+      }
+    ]
+  },
+  "paired": {
+    "table": {
+      "both": 91,
+      "only_a": 0,
+      "only_b": 7,
+      "neither": 4
+    },
+    "mcnemar_p": 0.015625,
+    "delta": -0.0686,
+    "delta_ci": [
+      -0.1176,
+      -0.0196
+    ],
+    "mde": 0.1401
+  },
+  "per_case": [
+    {
+      "id": "q01",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q02",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q03",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q04",
+      "vector": false,
+      "hybrid": true
+    },
+    {
+      "id": "q05",
+      "vector": false,
+      "hybrid": true
+    },
+    {
+      "id": "q06",
+      "vector": false,
+      "hybrid": true
+    },
+    {
+      "id": "q07",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q08",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q09",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q10",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q11",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q12",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q13",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q14",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q15",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q16",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q17",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q18",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q19",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q20",
+      "vector": false,
+      "hybrid": false
+    },
+    {
+      "id": "q21",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q22",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q23",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q24",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q25",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q26",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q27",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q28",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q29",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q30",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q31",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q32",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q33",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q34",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q35",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q36",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q37",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q38",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q39",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q40",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "n01",
+      "vector": false,
+      "hybrid": false
+    },
+    {
+      "id": "n02",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "n03",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "n04",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "n05",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "n06",
+      "vector": false,
+      "hybrid": true
+    },
+    {
+      "id": "n07",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q41",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q42",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q43",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q44",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q45",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q46",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q47",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q48",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q49",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q50",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q51",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q52",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q53",
+      "vector": false,
+      "hybrid": true
+    },
+    {
+      "id": "q54",
+      "vector": false,
+      "hybrid": true
+    },
+    {
+      "id": "q55",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q56",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q57",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q58",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q59",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q60",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q61",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q62",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q63",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q64",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q65",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q66",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q67",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q68",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q69",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q70",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q71",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q72",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q73",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q74",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q75",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q76",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q77",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q78",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q79",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q80",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q81",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q82",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q83",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q84",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q85",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q86",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q87",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q88",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q89",
+      "vector": false,
+      "hybrid": false
+    },
+    {
+      "id": "q90",
+      "vector": false,
+      "hybrid": false
+    },
+    {
+      "id": "q91",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q92",
+      "vector": false,
+      "hybrid": true
+    },
+    {
+      "id": "q93",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q94",
+      "vector": true,
+      "hybrid": true
+    },
+    {
+      "id": "q95",
+      "vector": true,
+      "hybrid": true
+    }
+  ]
+}

@@ -30,6 +30,9 @@ jobs:
           # 不在这里 `pip install pytest`（那会把测试框架升到 lock 之外，
           # 锁定就名存实亡，而且历史上正是这种漂移让 asyncio_mode 生效与否随环境变）。
           pip install ruff
+          # tiktoken 只用于 token 治理的「估算器 vs 真实 tokenizer」对照；
+          # 它是可选依赖，不装的话脚本会降级（不能因为没装就让数字变成假的）
+          pip install tiktoken
 
       - name: Dependency audit (advisory)
         run: |
@@ -38,13 +41,17 @@ jobs:
           # 需要强制时把最后一行改成 `pip-audit ... --strict`。
           pip-audit -r backend/requirements.lock || true
 
-      # 下面六步 = backend/scripts/verify_all.py 的六个环节，顺序与参数保持一致
-      # （分步是为了在 GitHub 上直接看出哪一环红了；改门禁请先改 verify_all.py）
+      # 下面九步 = backend/scripts/verify_all.py 的九步（外加 pip-audit 与产物上传），
+      # 顺序与参数保持一致（分步是为了在 GitHub 上直接看出哪一环红了；
+      # 改门禁请先改 verify_all.py，doc 一致性检查会验证两边的步骤没漏）
       - name: Lint
         run: python -m ruff check backend
 
       - name: Unit & integration tests
         run: python -m pytest
+
+      - name: Session & memory evidence (offline)
+        run: python backend/scripts/memory_evidence.py
 
       - name: Behavior eval (regression gate)
         run: |
@@ -59,11 +66,23 @@ jobs:
       - name: Enterprise evidence (numbers must not drift from docs)
         run: python backend/scripts/enterprise_evidence.py --fast
 
+      - name: Retrieval A/B (hybrid must not be worse than vector)
+        run: python backend/scripts/retrieval_eval.py --json backend/evals/retrieval_eval.json
+
+      - name: Token governance (char cap vs token cap)
+        run: python backend/scripts/token_governance.py --json backend/evals/token_governance.json
+
+      - name: Sync concurrency stress (version guard)
+        run: python backend/scripts/sync_stress.py --json backend/evals/sync_stress.json
+
       - name: End-to-end smoke
         run: python backend/scripts/smoke_scenarios.py --serve
 
       - name: Crash injection (exactly-once)
         run: python backend/scripts/chaos_resume.py
+
+      - name: Docs consistency (numbers must match code)
+        run: python backend/scripts/verify_docs.py
 
       - name: Upload eval report
         if: always()

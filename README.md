@@ -6,19 +6,24 @@
 > v0.7 补的是「出事之后怎么自证」：不可变执行契约、版本化迁移、效果级幂等 + 真 `kill -9` 崩溃注入、审批等待态持久化、治理台账、结构化日志与 Prometheus、行为评测回归门禁，以及一条命令的发布门禁 `make verify`。
 > v0.8 补的是「上下文与记忆从哪来、凭什么可信」：会话树分支与 `branch_summary`、`context_edit` 上下文修订、JSONL 会话文件往返、AGENTS.md 式分层记忆、可撤销的长期记忆（来源可追溯 + 投毒门禁），以及压缩摘要接真模型并保留确定性兜底。
 > v0.9 做的是**拿简历当验收清单反向核查**：工具输出治理（脱敏 / 裁剪 / 引用化）、审批一次性令牌防重放、评测多 Trial + 置信区间、知识同步的版本守卫 / 幂等 Upsert / 重试 / DLQ、成本落库与阈值告警。核查过程、缺口与数据全部写在 `docs/10-企业级核查与数据支撑.md`，一条命令复现：`python backend/scripts/enterprise_evidence.py`。
+> v0.10 做的是**把「说法」变成可复现的数字**：检索从 n-gram 哈希换成 IDF 覆盖度 + BM25 混合（Recall@1 91.1% → 96.7%，McNemar p=0.0156）、输出裁剪从「按字符」改成「按 token」（离散度 1.72× → 1.34×）、同步链路补真并发压测（8 线程下 naive 3~5/40 陈旧覆盖 → 守卫 0/40）、降级从静默改成台账 + 指标 + `STRICT_DEGRADE` fail-closed，并新增**文档一致性门禁**（把「文档数字与代码不一致」变成红灯）。起点、终点、检验与边界全部在 `docs/11-不一致项收敛与前后对比.md`。
 > 边界先说清：内置两套声明是**同一套 Skill 的不同子集**（全能力 / 只读），不是两个不同领域；执行期 guard 只在**能力被收紧或被污染**的路径上才会真正拦截。
 
 | 项 | 状态 |
 |---|---|
-| 版本 | v0.9 · 2026-11-08 |
+| 版本 | v0.10 · 2026-11-08 |
 | 运行 | ✅ 可运行；Mock 模式无需 API Key，Redis / MySQL 不可用时自动降级 |
-| 测试 | `pytest` **162 passed**（FSM、断点续跑与能力指纹、执行契约、幂等与崩溃对账、路由回退与会话卫生、会话分支与上下文修订、记忆分层/召回/投毒/撤销、输出脱敏/裁剪/引用化、审批一次性令牌、知识同步版本/重试/DLQ、权限治理、执行期能力边界、人工通道豁免、ASR、知识检索、SQL 方言、观测） |
+| 测试 | `pytest` **179 passed**（FSM、断点续跑与能力指纹、执行契约、幂等与崩溃对账、路由回退与会话卫生、会话分支与上下文修订、记忆分层/召回/投毒/撤销、输出脱敏/裁剪/引用化、审批一次性令牌、知识同步版本/重试/DLQ、权限治理、执行期能力边界、人工通道豁免、ASR、知识检索与混合排序、token 估算与裁剪、降级台账、SQL 方言、观测） |
 | 评测门禁 | `run_eval.py --trials 5` 25 条用例 × 5 轮 = **125 次执行**，通过率 1.0、95% Wilson CI [0.9702, 1.0]；路由 1.0 / 审批覆盖 1.0 / 违规 0；1 条需真模型的用例显式跳过 |
 | 企业级数据 | `enterprise_evidence.py` **6 组**实测（输出 −87.5% 字符 / PII 4 处 / 重放 5→1 / 并发 6→1 / 同步 stale 与 DLQ / token 与成本），结果落 `evals/enterprise_evidence.json` |
 | 崩溃注入 | `chaos_resume.py` 真 `kill -9`，6/6 用例满足「副作用恰好一次」 |
 | 会话与记忆 | `memory_evidence.py` 离线 8 组实证（分支/修订/往返/分层/投毒/召回/撤销/提示词注入），零依赖、不调模型 |
+| 检索质量 | `retrieval_eval.py` 标注集 102 条查询 / 1140 篇语料：hybrid Recall@1 **96.7%** vs vector 91.1%，错绑定 0%，P50 延迟 6.44ms（−73.8%）；成对检验 p=0.0156 |
+| token 治理 | `token_governance.py`：同样的预算下，按字符裁的真实 token 离散度 **1.72×** → 按 token 裁 **1.34×**；估算器对 tiktoken 的 MAE **5.7%** |
+| 并发正确性 | `sync_stress.py`：8 线程 × 400 事件，naive 先查后写 **3~5/40** 文档被旧事件覆盖，SQL 版本守卫 **0/40**（单线程两者都是 0） |
+| 文档一致性 | `verify_docs.py` 把「文档里的数字」与「代码/用例/脚本里的真实数字」对一遍，不一致即红；当前 0 处不一致 |
 | 演示 | `backend/scripts/smoke_scenarios.py` 7 组可复现场景（含双通道治理与能力快照），看板 100% 成功率 / 5 条种子 Trace |
-| 工程化 | `verify_all.py` / `make verify`（lint + test + memory + eval + evidence + smoke + chaos 七步）、Dockerfile（非 root + healthcheck）、docker-compose（app + redis）、GitHub Actions、依赖哈希锁定 |
+| 工程化 | `verify_all.py` / `make verify` 共 **11** 步（lint + test + memory + eval + evidence + retrieval + token + sync + smoke + chaos + docs）、Dockerfile（非 root + healthcheck）、docker-compose（app + redis）、GitHub Actions（逐步对应）、依赖哈希锁定 |
 | 技术栈 | Python 3.11+ / FastAPI / SQLite（可选 MySQL、Redis）/ Vue3 / SSE / pytest / ruff |
 
 > [!IMPORTANT]
@@ -246,25 +251,32 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 | 环节 | 命令 | 结果 |
 |---|---|---|
 | 静态检查 | `ruff check backend` | 0 告警（E/F/I 全开） |
-| 单元 / 集成 | `python -m pytest` | **162 passed** |
+| 单元 / 集成 | `python -m pytest` | **179 passed** |
 | 行为评测 | `python backend/scripts/run_eval.py --trials 5` | 25 条 × 5 轮 = **125 次执行**：通过率 1.0（95% Wilson CI [0.9702, 1.0]）/ 路由 1.0 / 审批覆盖 1.0 / 禁调工具违规 0；1 条需真模型的用例显式跳过 |
 | 企业级数据 | `python backend/scripts/enterprise_evidence.py` | **6 组**实测，见下表 |
 | 端到端冒烟 | `python backend/scripts/smoke_scenarios.py` | **7/7**（含双通道治理、能力快照、断点续跑兼容） |
 | 崩溃注入 | `python backend/scripts/chaos_resume.py` | **6/6** 满足「副作用恰好一次」 |
 | Pi 架构对照 | `python backend/scripts/pi_evidence.py` | 7 组实证，指纹 `16e6fe692461…` 稳定 |
 | 会话与记忆 | `python backend/scripts/memory_evidence.py` | **8 组**离线实证全通过（分支/修订/往返/分层/投毒/召回/撤销/提示词注入） |
+| 检索 A/B | `python backend/scripts/retrieval_eval.py` | hybrid **Recall@1 96.7%** vs vector 91.1%（1140 篇）；p=0.0156；延迟 −73.8% |
+| token 治理 | `python backend/scripts/token_governance.py` | 裁剪离散度 **1.72× → 1.34×**；估算器 MAE **5.7%** |
+| 并发压测 | `python backend/scripts/sync_stress.py` | naive **3~5/40** 陈旧覆盖 → 守卫 **0/40**（8 线程 / 400 事件） |
+| 文档一致性 | `python backend/scripts/verify_docs.py` | **0** 处不一致（首次运行报出 5 处） |
 | 真模型链路 | `python backend/scripts/live_smoke.py` | **5/5**（补全 / function calling / 意图分类 / 六段摘要 / tool_calls 回传格式），无密钥自动跳过、不进 CI |
 
 企业级数据（`enterprise_evidence.py` 的真实输出，不是估算）：
 
 | 维度 | 实测 |
 |---|---|
+| 检索质量（v0.10） | 1140 篇语料：Recall@1 vector 91.1% → hybrid **96.7%**；错绑定 8.3% → **0%**；延迟 24.56 → **6.44ms** |
+| 裁剪口径（v0.10） | 1600 字符上限的真实 token 517~888（**1.72×**）→ 900 token 预算 660~886（**1.34×**） |
+| 并发正确性（v0.10） | 8 线程：naive **3~5/40**、guarded **0/40**；单线程两者皆 0 |
 | 上下文输出治理 | 12,829 字符 → **1,600 字符（−87.5%）**；PII 掩码 **4 处**；按 ref 回查 12,831 字符，sha256 校验 **True** |
 | 审批一次性令牌 | 同一令牌重放 5 次 → **1 成功**；6 个并发 → **1 成功**；错令牌 `token_invalid`、缺令牌 `token_missing` |
 | 评测可信度 | 25×5=125 次执行，1.0，**CI [0.9702, 1.0]**；P95 跨轮 1281–1572ms（+22.7%，故不作门禁） |
 | 知识同步 | 重复 3 次 → **写 1 次**（stale 2）；乱序 v3→v2 → 内容仍为 v3；删除后旧事件 → 不复活；失败 2 次重试后成功；死信 1 条重放成功 |
 | 成本 | 3 轮新对话：输入 1,970 / 输出 409 token，**297.4 token/轮**；示例单价下 $0.001488（单价由配置给，示例非报价） |
-| 测试资产 | **162** 条用例 |
+| 测试资产 | **179** 条用例 |
 
 崩溃注入的实际分布（这才是它有价值的地方，不是「全绿」两个字）：
 

@@ -72,7 +72,10 @@ class Settings(BaseSettings):
     memory_layer_max_chars: int = 1600    # 单层记忆文件注入上限（防止挤占上下文）
     memory_entry_max_chars: int = 400     # 单条动态记忆长度上限
     # ---------- 工具输出治理（脱敏 / 裁剪 / 引用化）----------
-    tool_output_max_chars: int = 1600     # 进上下文的单次工具输出上限（超出裁剪 + 引用化）
+    tool_output_max_chars: int = 1600     # 字符上限（max_tokens=0 时生效，作为兼容路径）
+    # token 上限（默认走这条）：字符上限对 token 的换算随输出形态浮动 1.79 倍，
+    # 上下文预算却是按 token 算的。900 ≈ 中文 780 字 / 英文 2500 字符。
+    tool_output_max_tokens: int = 900
     tool_output_head_ratio: float = 0.7   # 裁剪后首部占比（尾部保留现场，如错误码 / 汇总行）
     pii_redact: bool = True               # 手机号 / 身份证 / 银行卡 / 邮箱掩码
     # ---------- 成本（按 token 计量 + 可配置单价；单价留空则只报 token）----------
@@ -82,6 +85,10 @@ class Settings(BaseSettings):
     alert_failure_rate: float = 0.15
     alert_approval_timeout_rate: float = 0.10
     alert_min_samples: int = 20
+
+    # ---------- 降级策略 ----------
+    # 1 = 只要出现 critical 降级就拒绝启动（多实例语义不成立时，宁可起不来）
+    strict_degrade: bool = False
     # ---------- 录音 / ASR / 纪要 ----------
     asr_backend: str = "mock"      # mock | faster_whisper | command
     asr_model: str = "small"
@@ -90,10 +97,17 @@ class Settings(BaseSettings):
     audio_dir: str = str(DATA_DIR / "audio")
     # ---------- 知识检索（生产 Milvus；本地降级向量索引）----------
     knowledge_backend: str = "local"   # local | milvus
+    # vector = v0.8 的 n-gram 余弦；hybrid = IDF 覆盖度 + BM25 融合（默认）
+    # 保留两种是为了能对标注集做 A/B（scripts/retrieval_eval.py 出数）
+    knowledge_mode: str = "hybrid"
     knowledge_dim: int = 256
     milvus_uri: str = ""               # 例如 http://127.0.0.1:19530
     knowledge_top_k: int = 5
-    knowledge_min_score: float = 0.35
+    # 0.35 → 0.38：标注集（1140 篇语料）上负例误召回 16.7% → 8.3%，召回不变
+    knowledge_min_score: float = 0.38
+    # 自动绑定（唯一命中直接当成客户）额外要求覆盖率过半，
+    # 只匹配到城市/商圈这种低信息量片段时只给候选卡，不自动绑定
+    knowledge_autobind_coverage: float = 0.5
     seed_demo: bool = True
     distance_ok_m: int = 500         # 范围内直接签到
     distance_approval_m: int = 2000  # 区间内走审批，超过直接拒绝
