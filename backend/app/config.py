@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "拜访通 · BD 拜访 Agent"
-    version: str = "0.7.0"      # /api/config 与冒烟输出都会读它，别再让它和文档漂开
+    version: str = "0.8.0"      # /api/config 与冒烟输出都会读它，别再让它和文档漂开
 
     # ---------- 鉴权 ----------
     auth_mode: str = "strict"                    # strict | demo（demo 额外允许 X-User-Id，仅本地演示）
@@ -61,6 +61,16 @@ class Settings(BaseSettings):
     enable_compaction: bool = True
     context_token_budget: int = 6000      # 超过预算触发压缩
     compaction_keep_recent: int = 12      # 保留最近 N 条（切点会避开 tool 结果）
+    # 压缩摘要是否交给真模型（对齐 Pi：摘要由模型生成）；失败/超时自动回退确定性摘要
+    llm_summary: bool = True
+
+    # ---------- 记忆（Pi 的 AGENTS.md 分层 + 长期记忆）----------
+    enable_memory: bool = True
+    memory_dir: str = "memory"            # 相对项目根：AGENTS.md / agents/<name>.md
+    memory_recall_k: int = 4              # 单轮注入的动态记忆条数上限
+    memory_min_score: float = 0.16        # 召回相似度下限，低于视为不相关
+    memory_layer_max_chars: int = 1600    # 单层记忆文件注入上限（防止挤占上下文）
+    memory_entry_max_chars: int = 400     # 单条动态记忆长度上限
     # ---------- 成本（可选，用于 done 事件展示）----------
     price_in_per_mtok: float = 0.0
     price_out_per_mtok: float = 0.0

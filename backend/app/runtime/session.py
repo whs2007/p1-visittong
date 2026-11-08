@@ -237,6 +237,7 @@ class AgentSession:
         active_skill: str,
         slots: dict[str, Any] | None = None,
         entity: dict[str, Any] | None = None,
+        memory_block: str = "",
     ) -> str:
         return build_system_prompt(
             active_skill=active_skill,
@@ -246,6 +247,7 @@ class AgentSession:
             preamble=self.spec.preamble,
             tool_names=[tool.name for tool in self.tools_for(active_skill)],
             skill_body=self.load_skill_body(active_skill),
+            memory_block=memory_block,
         )
 
     def describe(self) -> dict[str, Any]:

@@ -13,6 +13,7 @@ from app.domain.idempotency import IdempotencyStore
 from app.domain.pipeline import EventPipeline
 from app.domain.tasks import TaskStore
 from app.llm.base import BaseLLM
+from app.memory.store import MemoryStore
 from app.orchestrator.loop import Orchestrator
 from app.policy.engine import PolicyEngine
 from app.runtime import AgentSession, ResourceLoader
@@ -41,6 +42,7 @@ class AppContext:
     resource_loader: ResourceLoader | None = None
     idem: IdempotencyStore | None = None
     governance: GovernanceStore | None = None
+    memories: MemoryStore | None = None
     login_failures: dict[str, dict[str, float]] = field(default_factory=dict)
     orchestrator: Orchestrator = field(init=False)
 
@@ -58,5 +60,6 @@ class AppContext:
             tasks=self.tasks,
             knowledge=self.knowledge,
             session=self.session,
+            memories=self.memories,
             idem=self.idem,
         )

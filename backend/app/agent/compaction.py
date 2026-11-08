@@ -13,13 +13,16 @@ P1 是请求-响应式的小规模会话，用「估算 token + 保留条数」�
 """
 from __future__ import annotations
 
+import inspect
 import json
+from collections.abc import Awaitable
 from typing import Any, Callable
 
 from app.config import Settings
 from app.sessions.tree import SessionTree
 
-Summarizer = Callable[[list[dict[str, Any]]], str]
+# 摘要器允许同步（确定性摘要）或异步（真模型），由 compact_if_needed 统一 await
+Summarizer = Callable[[list[dict[str, Any]]], str | Awaitable[str]]
 
 
 def estimate_tokens(text: str) -> int:
@@ -122,6 +125,8 @@ async def compact_if_needed(
         return None
     older = path[:start]
     text = (summarizer or digest_entries)(older)
+    if inspect.isawaitable(text):
+        text = await text
     info = tree.compact(session_id, summary_text=text, first_kept_entry_id=path[start]["entry_id"])
     if info is None:
         return None

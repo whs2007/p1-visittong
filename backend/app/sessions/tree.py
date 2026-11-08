@@ -18,6 +18,31 @@ from app.domain.db import Database
 from app.utils import new_id, now_iso
 
 
+def _openai_tool_calls(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """把内部存储的 tool_calls 还原成 OpenAI 兼容请求格式。
+
+    内部存的是扁平结构 `{id, name, arguments}`（好读、好审计），但请求体要求
+    `{id, type:"function", function:{name, arguments}}`。少了 `function` 这层包装，
+    DashScope 会直接 500（严格 pydantic 校验），OpenAI 也可能报 400 —— 这个差异
+    只有接真模型时才会暴露，mock 永远发现不了。
+    """
+    out: list[dict[str, Any]] = []
+    for call in calls or []:
+        function = call.get("function") if isinstance(call.get("function"), dict) else {}
+        name = function.get("name") or call.get("name") or ""
+        args = function.get("arguments") if function else call.get("arguments", "")
+        if not isinstance(args, str):
+            args = json.dumps(args or {}, ensure_ascii=False)
+        out.append(
+            {
+                "id": call.get("id") or new_id("call"),
+                "type": "function",
+                "function": {"name": name, "arguments": args},
+            }
+        )
+    return out
+
+
 class SessionTree:
     def __init__(self, db: Database) -> None:
         self.db = db
@@ -138,6 +163,114 @@ class SessionTree:
             "branch_summary_id": summary_id,
         }
 
+    def fork(
+        self,
+        session_id: str,
+        from_entry_id: str,
+        *,
+        summary_text: str | None = None,
+    ) -> dict[str, Any] | None:
+        """从任意历史条目分叉出新分支（Pi：分支只新增子节点，不删旧节点）。
+
+        与 `switch_leaf` 的差别只是语义命名：这里明确「旧的后续分支被放弃，
+        要给它留一条 branch_summary」，否则切回去以后模型会以为那一段没发生过。
+        """
+        # 必须在切换**之前**取被放弃的分支：切换后 leaf 已指向新分支，回溯出来的
+        # 是新路径而不是旧路径（这个顺序错误会让「被放弃了什么」永远是空列表）。
+        abandoned = [item["entry_id"] for item in self.abandoned_path(session_id, from_entry_id)]
+        info = self.switch_leaf(session_id, from_entry_id, summary_text=summary_text)
+        if info is None:
+            return None
+        return {**info, "abandoned": abandoned}
+
+    def abandoned_path(self, session_id: str, from_entry_id: str) -> list[dict[str, Any]]:
+        """当前分支上位于 `from_entry_id` 之后的条目（用于生成被放弃分支的摘要）。"""
+        items = self.path(session_id, limit=100_000)
+        ids = [item["entry_id"] for item in items]
+        if from_entry_id not in ids:
+            return []
+        return items[ids.index(from_entry_id) + 1:]
+
+    def context_edit(
+        self,
+        session_id: str,
+        *,
+        note: str,
+        exclude_entry_ids: list[str] | None = None,
+    ) -> dict[str, Any] | None:
+        """上下文修订（Pi 的 context_edit）：只改「模型看到什么」，不改历史。
+
+        为什么不能直接删条目：会话文件是可举证的事实记录，删了就说不清「当时
+        到底说了什么」。Pi 的做法是追加一条 context_edit，让后续上下文组装时
+        跳过指定条目；这里保持一致，并在 `messages()` 里额外保护 tool 配对。
+        """
+        if not self.leaf(session_id):
+            return None
+        payload = {
+            "note": (note or "").strip()[:500],
+            "exclude": [eid for eid in (exclude_entry_ids or []) if eid],
+        }
+        entry = self.append(
+            session_id=session_id, parent_id=None, role="context_edit",
+            content=json.dumps(payload, ensure_ascii=False), entry_type="context_edit",
+        )
+        return {
+            "entry_id": entry["entry_id"],
+            "excluded": payload["exclude"],
+            "note": payload["note"],
+        }
+
+    def import_jsonl(self, session_id: str, text: str) -> dict[str, Any]:
+        """从导出的 JSONL 恢复会话（Pi 的会话文件可以换个环境继续用）。
+
+        旧 id 全部重映射，避免与目标会话的既有条目冲突；parent 关系按映射重建，
+        根条目保持 parent 为空；最后一条成为 leaf。
+        """
+        import_rows: list[dict[str, Any]] = []
+        for line in (text or "").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"第 {len(import_rows) + 1} 行不是合法 JSON") from exc
+            if not isinstance(row, dict) or not row.get("role"):
+                raise ValueError(f"第 {len(import_rows) + 1} 行缺少 role")
+            import_rows.append(row)
+        if not import_rows:
+            raise ValueError("没有可导入的条目")
+
+        mapping: dict[str, str] = {}
+        last_id: str | None = None
+        with self.db._conn() as conn:  # noqa: SLF001
+            for row in import_rows:
+                old_id = str(row.get("entry_id") or row.get("id") or "")
+                new_id_value = new_id("e")
+                if old_id:
+                    mapping[old_id] = new_id_value
+                parent_old = row.get("parent_id")
+                parent_new = mapping.get(str(parent_old)) if parent_old else None
+                conn.execute(
+                    "INSERT INTO session_entries (entry_id,session_id,parent_id,role,content,tool_calls,"
+                    "card,is_leaf,tool_call_id,name,created_at,entry_type) "
+                    "VALUES (?,?,?,?,?,?,?,0,?,?,?,?)",
+                    (
+                        new_id_value, session_id, parent_new,
+                        str(row.get("role")), row.get("content"),
+                        row.get("tool_calls") if isinstance(row.get("tool_calls"), str) else None,
+                        row.get("card") if isinstance(row.get("card"), str) else None,
+                        row.get("tool_call_id"), row.get("name"),
+                        str(row.get("created_at") or now_iso()),
+                        str(row.get("entry_type") or "message"),
+                    ),
+                )
+                last_id = new_id_value
+            conn.execute("UPDATE session_entries SET is_leaf=0 WHERE session_id=?", (session_id,))
+            if last_id:
+                conn.execute("UPDATE session_entries SET is_leaf=1 WHERE entry_id=?", (last_id,))
+        return {"imported": len(import_rows), "leaf_id": last_id}
+
     def export_jsonl(self, session_id: str) -> str:
         """导出会话条目为 JSONL（Pi 的会话文件格式，便于回放/排障）。"""
         rows = self.db._rows(
@@ -181,14 +314,52 @@ class SessionTree:
         return items
 
     def messages(self, session_id: str, limit: int = 40) -> list[dict[str, Any]]:
-        """转成 OpenAI 消息格式（供 LLM 使用）。"""
+        """转成 OpenAI 消息格式（供 LLM 使用），并应用 context_edit 修订。
+
+        修订规则（对齐 Pi 的 context_edit 语义）：被 exclude 的条目**不删**，
+        只是不进模型上下文；修订说明本身以 system 消息插在最前面。
+        额外保护 tool 配对——assistant 的 tool_calls 被排除时，它产生的
+        tool 结果必须一起排除，否则会构造出「孤儿 tool 消息」，多数 provider 直接 400。
+        """
+        path = self.path(session_id, limit)
+        excluded: set[str] = set()
+        notes: list[str] = []
+        for item in path:
+            if item.get("entry_type") != "context_edit":
+                continue
+            try:
+                payload = json.loads(item["content"] or "{}")
+            except (json.JSONDecodeError, TypeError):
+                continue
+            excluded.update(payload.get("exclude") or [])
+            if payload.get("note"):
+                notes.append(str(payload["note"]))
+
+        if excluded:
+            orphan_calls: set[str] = set()
+            for item in path:
+                if item["role"] == "assistant" and item.get("tool_calls") and item["entry_id"] in excluded:
+                    try:
+                        orphan_calls.update(
+                            call.get("id", "") for call in json.loads(item["tool_calls"])
+                        )
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+            for item in path:
+                if item["role"] == "tool" and item.get("tool_call_id") in orphan_calls:
+                    excluded.add(item["entry_id"])
+
         out: list[dict[str, Any]] = []
-        for item in self.path(session_id, limit):
+        if notes:
+            out.append({"role": "system", "content": "[上下文修订] " + "；".join(notes)})
+        for item in path:
+            if item["entry_id"] in excluded or item.get("entry_type") == "context_edit":
+                continue
             role = item["role"]
             base = {"role": role, "content": item["content"] or ""}
             if role == "assistant" and item["tool_calls"]:
                 try:
-                    base["tool_calls"] = json.loads(item["tool_calls"])
+                    base["tool_calls"] = _openai_tool_calls(json.loads(item["tool_calls"]))
                 except json.JSONDecodeError:
                     pass
             if role == "tool":

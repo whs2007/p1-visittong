@@ -3,7 +3,7 @@ PY ?= python
 BACKEND := backend
 PYTEST := $(PY) -m pytest
 
-.PHONY: help install run test lint eval eval-update smoke chaos backup verify reconcile clean-test-data
+.PHONY: help install run test lint eval eval-update live-smoke memory-evidence smoke chaos backup verify reconcile clean-test-data
 
 help:
 	@echo "make install        安装锁定依赖（requirements.lock）"
@@ -30,6 +30,14 @@ test:
 
 lint:
 	$(PY) -m ruff check backend
+
+live-smoke:
+	# 真模型自检（需要 .env 里配好 LLM_MODE=live 与 LLM_API_KEY；无密钥自动跳过）
+	$(PY) $(BACKEND)/scripts/live_smoke.py
+
+memory-evidence:
+	# 会话树分支/修订、记忆分层/召回/投毒/撤销，全离线（不调模型、不花额度）
+	$(PY) $(BACKEND)/scripts/memory_evidence.py
 
 eval:
 	$(PY) $(BACKEND)/scripts/run_eval.py

@@ -306,3 +306,108 @@ async def decide_approval(
             trace_id=str(approval.get("trace_id") or ""),
         )
     return {"approval_id": approval_id, "decision": body.decision}
+
+# --------------------------------------------------------------------------- #
+# 会话管理（对齐 Pi 的会话树：分支 / 上下文修订 / 会话文件恢复）
+# --------------------------------------------------------------------------- #
+class ForkBody(BaseModel):
+    from_entry_id: str | None = None    # 缺省 = 当前 leaf（等价于「从最新一条分叉」）
+    note: str = ""
+
+
+class ContextEditBody(BaseModel):
+    note: str = Field(min_length=1, max_length=500)
+    exclude_entry_ids: list[str] = Field(default_factory=list)
+
+
+class ImportBody(BaseModel):
+    jsonl: str = Field(min_length=1)
+
+
+@router.post("/sessions/{session_id}/fork")
+async def fork_session(
+    session_id: str,
+    body: ForkBody,
+    ctx: AppContext = Depends(get_ctx),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """从历史条目分叉；被放弃的分支自动留一条 branch_summary。
+
+    为什么要摘要：切换分支后，模型看到的是新分支的上下文。如果不留摘要，
+    「刚才在旧分支上确认过的事」会彻底消失，用户会觉得助手失忆——这正是 Pi
+    用 branch_summary 解决的问题。
+    """
+    await _require_session(ctx, session_id, user)
+    from_entry = body.from_entry_id or ctx.tree.leaf(session_id)
+    if not from_entry:
+        raise not_found("SESSION_EMPTY", "会话没有可分支的历史条目")
+
+    abandoned = ctx.tree.abandoned_path(session_id, from_entry)
+    summary = ""
+    if abandoned:
+        from app.agent.compaction import digest_entries
+
+        summary = digest_entries(abandoned)
+        if body.note:
+            summary = f"{summary}\n\n## 用户说明\n- {body.note}"
+
+    info = ctx.tree.fork(session_id, from_entry, summary_text=summary or None)
+    if info is None:
+        raise not_found("ENTRY_NOT_FOUND", "分叉点不在该会话中")
+    ctx.db.add_audit(
+        actor=user["user_id"], action="session.fork", target_type="session", target_id=session_id,
+        after={"branch_from": from_entry, "abandoned": len(abandoned), "note": body.note},
+    )
+    return {
+        "session_id": session_id,
+        "leaf_id": info["leaf_id"],
+        "branch_from": from_entry,
+        "branch_summary_id": info.get("branch_summary_id"),
+        "abandoned_entries": len(abandoned),
+    }
+
+
+@router.post("/sessions/{session_id}/context-edit")
+async def edit_context(
+    session_id: str,
+    body: ContextEditBody,
+    ctx: AppContext = Depends(get_ctx),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """上下文修订：把某些条目「移出模型上下文」，但保留在会话文件里。
+
+    典型场景：用户说「刚才那句价格是错的，别当真」。直接删条目会破坏可追溯性；
+    标记排除则既能纠正上下文，又能事后回答「它当时确实这么说过」。
+    """
+    await _require_session(ctx, session_id, user)
+    info = ctx.tree.context_edit(
+        session_id, note=body.note, exclude_entry_ids=body.exclude_entry_ids,
+    )
+    if info is None:
+        raise not_found("SESSION_EMPTY", "会话没有可修订的上下文")
+    ctx.db.add_audit(
+        actor=user["user_id"], action="session.context_edit",
+        target_type="session", target_id=session_id,
+        after={"entry_id": info["entry_id"], "excluded": len(info["excluded"]), "note": info["note"]},
+    )
+    return {"session_id": session_id, **info}
+
+
+@router.post("/sessions/{session_id}/import")
+async def import_session(
+    session_id: str,
+    body: ImportBody,
+    ctx: AppContext = Depends(get_ctx),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """把导出的 JSONL 恢复到当前会话（Pi 的会话文件可跨环境继续）。"""
+    await _require_session(ctx, session_id, user)
+    try:
+        info = ctx.tree.import_jsonl(session_id, body.jsonl)
+    except ValueError as exc:
+        raise ApiError(400, "SESSION_IMPORT_INVALID", str(exc)) from exc
+    ctx.db.add_audit(
+        actor=user["user_id"], action="session.import", target_type="session",
+        target_id=session_id, after={"imported": info["imported"]},
+    )
+    return {"session_id": session_id, **info}

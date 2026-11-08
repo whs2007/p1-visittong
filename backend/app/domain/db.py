@@ -186,6 +186,26 @@ CREATE TABLE IF NOT EXISTS state_transitions (
 );
 CREATE INDEX IF NOT EXISTS idx_transitions_entity ON state_transitions(entity_type, entity_id, created_at);
 
+-- 长期记忆：Pi 没有内置的内存记忆（它的「记忆」是 AGENTS.md 分层文件 + 会话树），
+-- 这里是本项目在其之上的扩展：可撤销、带来源、可审计的动态记忆。
+CREATE TABLE IF NOT EXISTS memories (
+  memory_id    TEXT PRIMARY KEY,
+  scope        TEXT NOT NULL,               -- project | agent | user
+  owner_id     TEXT,                        -- agent 名 / user_id；project 作用域为 NULL
+  kind         TEXT NOT NULL DEFAULT 'fact',-- fact | preference | decision
+  content      TEXT NOT NULL,
+  tags         TEXT,
+  confidence   REAL DEFAULT 0.7,
+  status       TEXT NOT NULL DEFAULT 'active',  -- active | revoked
+  source_session_id TEXT,                    -- 这条记忆从哪次对话来
+  source_entry_id   TEXT,
+  created_by   TEXT,
+  created_at   TEXT NOT NULL,
+  revoked_at   TEXT,
+  revoked_by   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope, owner_id, status);
+
 -- Durable Execution：任务运行、步骤检查点、工具执行去重（崩溃后可 resume）
 CREATE TABLE IF NOT EXISTS task_runs (
   turn_id      TEXT PRIMARY KEY,

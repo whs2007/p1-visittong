@@ -45,6 +45,7 @@ def build_system_prompt(
     preamble: str | None = None,
     tool_names: list[str] | None = None,
     skill_body: str | None = None,
+    memory_block: str | None = None,
 ) -> str:
     """组装 system prompt。
 
@@ -73,6 +74,10 @@ def build_system_prompt(
         ]
 
     hint = json.dumps({k: v for k, v in slots.items() if k in SLOT_KEYS}, ensure_ascii=False)
+    if memory_block:
+        # 记忆放在技能正文之后、运行时状态之前：它会影响「怎么做」，但不该压过
+        # 当前技能的硬规则；同时也避免记忆里的措辞改写技能约束（记忆投毒面）。
+        lines += ["", memory_block]
     lines += [
         "",
         "# 运行时状态",

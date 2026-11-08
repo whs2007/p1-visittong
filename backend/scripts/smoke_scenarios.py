@@ -53,6 +53,13 @@ def _start_server(port: int) -> tuple[subprocess.Popen, str]:
         "AUTH_MODE": "demo",
         "AUTH_ALLOW_INSECURE_SECRET": "1",
         "SQLITE_PATH": str(db_dir / "smoke.db"),
+        # 冒烟必须离线确定性：开发者的 `.env` 里可能有 LLM_MODE=live，
+        # 一旦被带进来，同样的代码会在「有 Key 的机器」上走真模型、在别的机器上走
+        # mock，结果不可复现（实测就是这么挂的：第 3 组 SSE 收到 error 而不是 done）。
+        # 真模型链路由 scripts/live_smoke.py 单独验证，不混进冒烟。
+        "LLM_MODE": "mock",
+        "LLM_API_KEY": "",
+        "ROUTER_MODE": "rules",
     })
     proc = subprocess.Popen(
         [sys.executable, str(root / "backend" / "run.py")],

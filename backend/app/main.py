@@ -18,6 +18,7 @@ from app.api import (
     routes_auth_ext,
     routes_chat,
     routes_knowledge,
+    routes_memory,
     routes_obs,
     routes_visit,
 )
@@ -33,6 +34,7 @@ from app.domain.pipeline import EventPipeline
 from app.domain.tasks import TaskStore
 from app.errors import ApiError, api_error_handler
 from app.llm import build_llm
+from app.memory.store import MemoryStore
 from app.obs.logging import setup as setup_logging
 from app.obs.security import LoginThrottleMiddleware, RequestContextMiddleware
 from app.policy.engine import PolicyEngine
@@ -168,6 +170,7 @@ async def lifespan(application: FastAPI):
         knowledge=knowledge, events=events,
         session=session, resource_loader=resource_loader,
         idem=idem, governance=governance,
+        memories=MemoryStore(db),
     )
     application.state.ctx = ctx
     log.info(
@@ -210,6 +213,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(routes_audio.router)
     app.include_router(routes_knowledge.router)
     app.include_router(routes_obs.router)
+    app.include_router(routes_memory.router)
 
     if FRONTEND_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")

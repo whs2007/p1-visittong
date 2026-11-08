@@ -30,12 +30,15 @@ from app.agent.events import EventFactory
 from app.agent.hooks import ToolCall
 from app.agent.pipeline import ToolPipeline
 from app.approvals import ApprovalManager
-from app.config import Settings
+from app.config import PROJECT_DIR, Settings
 from app.domain.db import Database
 from app.domain.fsm import SessionFSM
 from app.domain.idempotency import IdempotencyStore
 from app.domain.tasks import TaskStore
 from app.llm.base import BaseLLM
+from app.memory.layers import load_layers, render_layers
+from app.memory.recall import pinned, recall, render_recall
+from app.memory.store import MemoryStore
 from app.orchestrator.router import RouteResult, build_slots, route_card, route_text_hybrid
 from app.policy.engine import PolicyEngine
 from app.runtime import AgentSession, default_session, issue_contract
@@ -86,6 +89,7 @@ class Orchestrator:
         knowledge: Any = None,
         session: AgentSession | None = None,
         idem: IdempotencyStore | None = None,
+        memories: MemoryStore | None = None,
     ) -> None:
         self.settings = settings
         self.db = db
@@ -99,6 +103,7 @@ class Orchestrator:
         self.tasks = tasks
         self.session = session or default_session(registry)
         self.idem = idem
+        self.memories = memories
         self.session_fsm = SessionFSM(db, state)
         self.pipeline = ToolPipeline(
             settings=settings, registry=registry, policy=policy,
@@ -202,9 +207,11 @@ class Orchestrator:
         skill: str,
         slots: dict[str, Any],
         trace_id: str,
+        user_id: str = "",
     ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
         info = await compact_if_needed(
             tree=self.tree, session_id=session_id, settings=self.settings,
+            summarizer=self._summarizer(),
         )
         if info:
             await self.traces.add_event(
@@ -217,11 +224,75 @@ class Orchestrator:
                 },
             )
         entity = await self.state.entity(session_id)
-        system = session.system_prompt(active_skill=skill, slots=slots, entity=entity)
+        memory_block = await self._memory_block(
+            session=session, session_id=session_id, user_id=user_id, trace_id=trace_id,
+        )
+        system = session.system_prompt(
+            active_skill=skill, slots=slots, entity=entity, memory_block=memory_block,
+        )
         messages = [{"role": "system", "content": system}] + self.tree.messages(
             session_id, self.settings.context_limit
         )
         return messages, info
+
+    def _summarizer(self):
+        """压缩摘要器：真模型优先，失败回退确定性摘要（离线/无 Key 时行为不变）。"""
+        if not self.settings.llm_summary:
+            return None
+        from app.agent.summarize import build_summarizer
+
+        return build_summarizer(self.llm, self.settings)
+
+    async def _memory_block(
+        self, *, session: AgentSession, session_id: str, user_id: str, trace_id: str
+    ) -> str:
+        """记忆注入：静态层（AGENTS.md 分层）+ 动态层（按当前输入召回）。
+
+        两层都带来源：静态层标文件路径，动态层标 memory_id 与会话 id。没有来源
+        的记忆等于模型幻觉，事后无法区分「它记住了」和「它编了一个」。
+        """
+        if not self.settings.enable_memory:
+            return ""
+        parts: list[str] = []
+
+        layers = load_layers(
+            PROJECT_DIR, session.name,
+            memory_dir=self.settings.memory_dir,
+            max_chars=self.settings.memory_layer_max_chars,
+        )
+        static = render_layers(layers)
+        if static:
+            parts.append(static)
+
+        if self.memories is not None and user_id:
+            query = self._last_user_text(session_id)
+            # 两路注入：偏好常驻（不依赖措辞命中）+ 事实召回（按当前输入打分）
+            always = pinned(self.memories, user_id=user_id, agent_name=session.name, limit=3)
+            items = recall(
+                self.memories, query=query, user_id=user_id, agent_name=session.name,
+                k=self.settings.memory_recall_k, min_score=self.settings.memory_min_score,
+            )
+            if always:
+                parts.append(render_recall(always, title="记忆（动态层，偏好常驻）"))
+            if items:
+                parts.append(render_recall(items))
+            if always or items:
+                await self.traces.add_event(
+                    trace_id, "memory_recall", name=f"pinned:{len(always)}+recalled:{len(items)}",
+                    payload={
+                        "pinned": [item["memory_id"] for item in always],
+                        "ids": [item["memory_id"] for item in items],
+                        "scores": [item["score"] for item in items],
+                        "matched": [item["matched"] for item in items],
+                    },
+                )
+        return "\n\n".join(parts)
+
+    def _last_user_text(self, session_id: str) -> str:
+        for item in reversed(self.tree.path(session_id, self.settings.context_limit)):
+            if item.get("role") == "user":
+                return str(item.get("content") or "")
+        return ""
 
     async def _fsm(self, *, session_id: str, event: str, user_id: str, trace_id: str) -> None:
         """会话 FSM 迁移：写 meta + state_transitions，并在 Trace 里留一条事件。"""
@@ -382,7 +453,7 @@ class Orchestrator:
                     last_step = step_start
                     messages, info = await self._prepare_context(
                         session=turn_session, session_id=session_id, skill=skill,
-                        slots=slots, trace_id=trace_id,
+                        slots=slots, trace_id=trace_id, user_id=user_id,
                     )
                     if info:
                         yield emit("compaction", **info)
@@ -466,7 +537,7 @@ class Orchestrator:
                 # 4) 组装上下文（必要时先压缩）
                 messages, info = await self._prepare_context(
                     session=turn_session, session_id=session_id, skill=skill,
-                    slots=slots, trace_id=trace_id,
+                    slots=slots, trace_id=trace_id, user_id=user_id,
                 )
                 if info:
                     yield emit("compaction", **info)
@@ -620,7 +691,7 @@ class Orchestrator:
                 # 用最新树内容重建上下文（必要时压缩），进入下一轮
                 messages, info = await self._prepare_context(
                     session=turn_session, session_id=session_id, skill=skill,
-                    slots=slots, trace_id=trace_id,
+                    slots=slots, trace_id=trace_id, user_id=user_id,
                 )
                 if info:
                     yield emit("compaction", **info)

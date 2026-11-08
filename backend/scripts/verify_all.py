@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 STEPS: list[tuple[str, list[str]]] = [
     ("lint  静态检查", [sys.executable, "-m", "ruff", "check", "backend"]),
     ("test  单元/集成", [sys.executable, "-m", "pytest"]),
+    ("memory 会话与记忆实证", [sys.executable, "backend/scripts/memory_evidence.py"]),
     ("eval  行为评测门禁", [sys.executable, "backend/scripts/run_eval.py"]),
     ("smoke 端到端冒烟", [sys.executable, "backend/scripts/smoke_scenarios.py", "--serve"]),
     ("chaos 崩溃注入", [sys.executable, "backend/scripts/chaos_resume.py"]),
@@ -38,7 +39,7 @@ STEPS: list[tuple[str, list[str]]] = [
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--fast", action="store_true", help="只跑 lint + test")
-    parser.add_argument("--skip", nargs="*", default=[], help="跳过指定环节：eval / smoke / chaos")
+    parser.add_argument("--skip", nargs="*", default=[], help="跳过指定环节：memory / eval / smoke / chaos")
     args = parser.parse_args()
 
     steps = STEPS[:2] if args.fast else STEPS

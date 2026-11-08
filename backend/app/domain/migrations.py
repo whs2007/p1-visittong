@@ -135,8 +135,41 @@ def _migrate_0001_governance_and_durability(conn: sqlite3.Connection) -> None:
     )
 
 
+def _migrate_0002_memories(conn: sqlite3.Connection) -> None:
+    """长期记忆表（v0.8）。
+
+    与 Pi 的关系要说清：Pi 的「记忆」是**文件层**——AGENTS.md 分层注入 + 会话树
+    持久化，没有可撤销的动态记忆库。本表是本项目在其之上的扩展，因此额外强调
+    「来源可追溯 + 可撤销 + 写入门禁」，否则记忆就会变成不可审计的隐形状态。
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS memories (
+          memory_id    TEXT PRIMARY KEY,
+          scope        TEXT NOT NULL,
+          owner_id     TEXT,
+          kind         TEXT NOT NULL DEFAULT 'fact',
+          content      TEXT NOT NULL,
+          tags         TEXT,
+          confidence   REAL DEFAULT 0.7,
+          status       TEXT NOT NULL DEFAULT 'active',
+          source_session_id TEXT,
+          source_entry_id   TEXT,
+          created_by   TEXT,
+          created_at   TEXT NOT NULL,
+          revoked_at   TEXT,
+          revoked_by   TEXT
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope, owner_id, status)"
+    )
+
+
 MIGRATIONS: list[tuple[int, str, str]] = [
     (1, "governance_and_durability", _migrate_0001_governance_and_durability),
+    (2, "memories", _migrate_0002_memories),
 ]
 
 

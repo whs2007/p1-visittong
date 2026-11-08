@@ -4,15 +4,17 @@
 > 底层是一套可拆插的 **Agent Runtime**：显式装配层（AgentSpec / ResourceLoader / AgentSession）、会话树与上下文压缩、分层 Skill 与混合意图路由、Tool Policy / HITL 审批 / 操作审计、Durable Execution（检查点、续跑、幂等）、全链路 Trace 与指标。
 > v0.5 起，能力集由配置在**装配期**决定，同一套 Runtime 可装配出不同能力集的 Agent，能力白名单在**执行期**硬校验；检查点绑定能力指纹，跨装配续跑会被显式拒绝。
 > v0.7 补的是「出事之后怎么自证」：不可变执行契约、版本化迁移、效果级幂等 + 真 `kill -9` 崩溃注入、审批等待态持久化、治理台账、结构化日志与 Prometheus、行为评测回归门禁，以及一条命令的发布门禁 `make verify`。
+> v0.8 补的是「上下文与记忆从哪来、凭什么可信」：会话树分支与 `branch_summary`、`context_edit` 上下文修订、JSONL 会话文件往返、AGENTS.md 式分层记忆、可撤销的长期记忆（来源可追溯 + 投毒门禁），以及压缩摘要接真模型并保留确定性兜底。
 > 边界先说清：内置两套声明是**同一套 Skill 的不同子集**（全能力 / 只读），不是两个不同领域；执行期 guard 只在**能力被收紧或被污染**的路径上才会真正拦截。
 
 | 项 | 状态 |
 |---|---|
-| 版本 | v0.7 · 2026-11-08 |
+| 版本 | v0.8 · 2026-11-08 |
 | 运行 | ✅ 可运行；Mock 模式无需 API Key，Redis / MySQL 不可用时自动降级 |
-| 测试 | `pytest` **115 passed**（FSM、断点续跑与能力指纹、执行契约、幂等与崩溃对账、路由回退与会话卫生、权限治理、执行期能力边界、人工通道豁免、ASR、知识检索、SQL 方言、观测） |
+| 测试 | `pytest` **137 passed**（FSM、断点续跑与能力指纹、执行契约、幂等与崩溃对账、路由回退与会话卫生、会话分支与上下文修订、记忆分层/召回/投毒/撤销、权限治理、执行期能力边界、人工通道豁免、ASR、知识检索、SQL 方言、观测） |
 | 评测门禁 | `run_eval.py` 25 条行为用例 + 基线比对（路由 1.0 / 审批覆盖 1.0 / 违规 0），1 条需真模型的用例显式跳过 |
 | 崩溃注入 | `chaos_resume.py` 真 `kill -9`，6/6 用例满足「副作用恰好一次」 |
+| 会话与记忆 | `memory_evidence.py` 离线 8 组实证（分支/修订/往返/分层/投毒/召回/撤销/提示词注入），零依赖、不调模型 |
 | 演示 | `backend/scripts/smoke_scenarios.py` 7 组可复现场景（含双通道治理与能力快照），看板 100% 成功率 / 5 条种子 Trace |
 | 工程化 | `verify_all.py` / `make verify`（lint + test + eval + smoke + chaos）、Dockerfile（非 root + healthcheck）、docker-compose（app + redis）、GitHub Actions、依赖哈希锁定 |
 | 技术栈 | Python 3.11+ / FastAPI / SQLite（可选 MySQL、Redis）/ Vue3 / SSE / pytest / ruff |
@@ -74,6 +76,25 @@ python backend/run.py
 
 锁文件里每个包都带 `sha256`，安装时强制校验：依赖被投毒换包会直接失败，而不是悄悄装上一个同名不同内容的版本。
 
+**接真模型（可选）**：默认 `LLM_MODE=mock`，不联网也能跑全流程。要切真模型就在 `.env` 里配三行：
+
+```ini
+LLM_MODE=live
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1   # 阿里云百炼 OpenAI 兼容端点
+LLM_MODEL=qwen-flash                                            # 实测最省的一档，支持 function calling
+LLM_API_KEY=sk-...                                              # 只写本地 .env，已被 .gitignore 忽略
+```
+
+`.env`、`.env.*` 全部在忽略列表里（只保留 `.env.example`），密钥不会进仓库。切换后 `router_mode=hybrid` 会真的走一次模型分类，压缩摘要也会交给模型生成；调用失败/超时自动回退确定性摘要，不影响 Turn 完成。
+
+切完跑一次自检确认链路通（不需要起服务）：
+
+```bash
+python backend/scripts/live_smoke.py      # 5/5：补全 / 工具调用 / 分类 / 摘要 / tool_calls 回传
+```
+
+> **这个自检不是摆设**：v0.8 接真模型时它暴露出一个 mock 永远发现不了的 bug——回传 assistant 的 `tool_calls` 时少了 `function` 包装层，DashScope 严格校验直接 500（`tool_calls.0.function Field required`）。修完才 5/5，并补了 `test_messages_normalize_tool_calls_for_openai` 钉住格式。
+
 - **演示账号**：`sales-001`（销售）/ `manager-001`（主管），初始密码见 `.env.example` 的 `DEMO_PASSWORD`。
 - 首次启动自动建库并写入种子数据（4 条待办 / 3 个计划 / 5 条历史 Trace）；重置：停服后删除 `data/` 再启动。
 - `GET /api/health` 会给出 Redis 降级原因；`/api/config` 可查看当前运行配置与版本号。
@@ -102,21 +123,23 @@ p1-visittong/
 │  ├─ requirements*.txt    依赖区间 + 锁定版本
 │  ├─ agents/              Agent 能力声明（JSON，启动期读取 / 可热更新）
 │  ├─ evals/               行为评测用例（cases.jsonl）与已评审基线（baseline.json）
-│  ├─ scripts/             Pi 对照实证、端到端冒烟、行为评测、崩溃注入、备份、测试数据清理
+│  ├─ scripts/             Pi 对照实证、会话语义实证、端到端冒烟、行为评测、崩溃注入、备份、测试数据清理
 │  ├─ tests/               单元 / 接口测试
 │  └─ app/
-│     ├─ agent/            事件包络、工具流水线、hooks、上下文压缩、纪要
+│     ├─ agent/            事件包络、工具流水线、hooks、上下文压缩（含 LLM 摘要兜底）、纪要
 │     ├─ runtime/          显式装配层：AgentSpec / ResourceLoader / AgentSession / ExecutionContract
 │     ├─ orchestrator/     Turn 状态机 + 混合意图路由
 │     ├─ domain/           db / fsm / tasks / migrations / idempotency / governance / audio / pipeline
 │     ├─ adapters/         crm / poi / asr / notify / knowledge（可替换边界）
-│     ├─ api/              auth / chat / visit / audio / knowledge / obs / sse
+│     ├─ api/              auth / chat / visit / audio / knowledge / memory / obs / sse
 │     ├─ obs/              结构化日志、request_id、登录限流中间件、Prometheus 指标
 │     ├─ policy/           工具风险、角色、危险模式、最严决策合并
-│     ├─ sessions/         会话树（entries + leaf 指针）+ 分布式会话锁
+│     ├─ sessions/         会话树（entries + leaf + 分支 + context_edit + JSONL 往返）+ 分布式会话锁
+│     ├─ memory/           分层记忆（AGENTS.md 就近覆盖）、长期记忆库、召回、投毒门禁
 │     ├─ skills/           8 个 Skill / 10 个工具与注册表
 │     ├─ llm/              mock + OpenAI 兼容客户端
 │     └─ trace/            Trace 存储与种子数据
+├─ memory/                 记忆文件：AGENTS.md（项目级）+ agents/<name>.md（Agent 级）
 ├─ frontend/               Vue3 单页控制台（含登录、工作台、审批、看板）
 ├─ scripts/                备份 / 恢复脚本
 └─ data/                   运行时 SQLite（已忽略，不入库）
@@ -169,6 +192,32 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 | schema 演进 | `domain/migrations.py`：版本化迁移（`schema_migrations` + `BEGIN IMMEDIATE` 单事务），不再散落 `PRAGMA` + `ALTER`；逐条执行而非 `executescript`（后者隐式 COMMIT，会把「要么全成」变成「成一半」） |
 | 可观测 | `GET /api/metrics`、`/api/metrics/prometheus`（带 `# HELP` / `# TYPE`）、`/api/traces?status=&skill=`；日志为单行 JSON + `request_id` + `trace_id`，`X-Request-Id` 可跨端对齐 |
 
+### 5.1 会话与记忆（v0.8，对齐 Pi 的会话模型）
+
+**先说清哪些是 Pi 的、哪些是本项目的**，这一节最容易被含糊过去：
+
+- **Pi 原生语义（本项目复现）**：会话条目 `{type,id,parentId,timestamp}` + `leaf` 指针、只追加不删改、分支 = 在任意节点下新增子节点、`compaction` 摘要条目、`branch_summary`（被放弃分支的摘要）、`context_edit`（改上下文不改历史）、JSONL 会话文件、`AGENTS.md` 分层注入（越靠近工作区越优先）。
+- **本项目扩展（Pi 没有）**：可撤销的长期记忆库、召回打分与「偏好常驻」通道、记忆投毒门禁与治理台账。原因很直接：Pi 的「记忆」是文件 + 会话树，没有跨会话事实存储，也没有「谁写进去的、怎么撤回」这套语义——而生产环境里这两件事都必须答得上来。
+
+| Pi 概念 | 本项目落点 | 可跑的证明 | 对外接口 |
+|---|---|---|---|
+| 会话树只追加 + 分支 | `sessions/tree.py: append / set_leaf / fork` | `test_fork_keeps_old_branch_and_writes_summary`——新分支只有 2 条路径，但总条目只增不减 | `POST /api/sessions/{id}/fork` |
+| `branch_summary` | `fork()` 在切换**之前**取被放弃分支并摘要 | `test_fork_summary_reaches_model_as_system_message`——摘要作为 system 消息进入新分支上下文 | 同上 |
+| `context_edit` | `tree.context_edit()` + `messages()` 应用排除集 | `test_context_edit_hides_entry_without_deleting_it`——上下文里没有、JSONL 里还在 | `POST /api/sessions/{id}/context-edit` |
+| tool 配对保护 | `messages()` 连带排除被删 assistant 的 tool 结果 | `test_context_edit_excludes_orphan_tool_results`（孤儿 tool 消息会让 provider 直接 400） | — |
+| JSONL 会话文件 | `export_jsonl` / `import_jsonl`（旧 id 全部重映射） | `test_jsonl_roundtrip_rebuilds_parent_chain` | `GET .../export`、`POST .../import` |
+| `AGENTS.md` 分层 | `memory/layers.py`：项目级 → Agent 级，同名小节后到覆盖 | `test_layers_nearest_wins_and_marks_source`——渲染结果里带 `← 覆盖 memory/AGENTS.md` | `GET /api/memory/layers` |
+| compaction 摘要由模型生成 | `agent/summarize.py`，六段固定结构；超时/异常回退确定性摘要 | 摘要失败也必须有上下文可继续（否则「上下文将满时再叠一次故障」） | — |
+| 长期记忆（扩展） | `memory/store.py`：`scope(project/agent/user)` + 来源 + 状态 | `test_memory_is_scoped_per_user`——A 的偏好不进 B 的上下文 | `POST/GET /api/memories` |
+| 召回（扩展） | `memory/recall.py`：覆盖率优先的混合打分 + 命中片段 | `test_recall_hits_fact_and_skips_noise`——`matched=['店长']` 进 Trace，召回理由可查 | Trace 事件 `memory_recall` |
+| 投毒门禁（扩展） | `memory/guard.py`：元指令 / 伪造角色行 / 特殊 token / 超长 / 作用域越权 | `test_poisoned_memory_is_rejected`（5 类参数化）、`test_memory_api_enforces_scope_and_records_governance` | `400 MEMORY_REJECTED[reason]` |
+
+三个刻意的取舍，被问到可以直接讲：
+
+1. **记忆分两路注入，而不是全塞进去**：`preference` 常驻（最多 3 条），`fact` 按当前输入召回。理由是实测出来的——「拜访尽量排在下午」在「帮我安排明天的拜访」这句话里一个关键词都对不上，但它恰恰最该在这时生效；纯相似度召回必然漏，所以偏好单独走常驻通道。
+2. **召回用字符二元组而不是 embedding**：项目要能离线跑（Mock 模式无 Key、无网络），召回必须可测试、可解释。代价是同义改写（「下午」vs「午后」）召不回，这是词汇级天花板，不假装是语义检索。
+3. **记忆写入不许模型自己决定**：写记忆要过门禁、要有来源（`source_session_id` / `source_entry_id`）、要进治理台账。让模型「自己总结然后写库」，写进去的东西既无法归因也无法撤回，一句玩笑会被固化成永久偏好。
+
 ## 6. 鉴权与权限
 
 | 能力 | 规则 |
@@ -191,11 +240,13 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 | 环节 | 命令 | 结果 |
 |---|---|---|
 | 静态检查 | `ruff check backend` | 0 告警（E/F/I 全开） |
-| 单元 / 集成 | `python -m pytest` | **115 passed**（179s） |
+| 单元 / 集成 | `python -m pytest` | **137 passed**（192s） |
 | 行为评测 | `python backend/scripts/run_eval.py` | 25 条用例：路由 1.0 / 审批覆盖 1.0 / 禁调工具违规 0 / 用例通过率 1.0；1 条需真模型的用例显式跳过 |
 | 端到端冒烟 | `python backend/scripts/smoke_scenarios.py` | **7/7**（含双通道治理、能力快照、断点续跑兼容） |
 | 崩溃注入 | `python backend/scripts/chaos_resume.py` | **6/6** 满足「副作用恰好一次」 |
 | Pi 架构对照 | `python backend/scripts/pi_evidence.py` | 7 组实证，指纹 `16e6fe692461…` 稳定 |
+| 会话与记忆 | `python backend/scripts/memory_evidence.py` | **8 组**离线实证全通过（分支/修订/往返/分层/投毒/召回/撤销/提示词注入） |
+| 真模型链路 | `python backend/scripts/live_smoke.py` | **5/5**（补全 / function calling / 意图分类 / 六段摘要 / tool_calls 回传格式），无密钥自动跳过、不进 CI |
 
 崩溃注入的实际分布（这才是它有价值的地方，不是「全绿」两个字）：
 
@@ -224,6 +275,10 @@ python scripts/smoke_scenarios.py                # 端到端 7 组（服务需�
 - 会话锁在 Redis 上（`SET NX` + owner token + Lua 校验删除）。Redis 不可用时降级为内存锁，**单机语义正确、多实例语义不成立**。
 - 前端用 `localStorage` 保存登录态：双人审批演示时主管在第二个标签登录会覆盖共享存储，销售标签请勿刷新（token 仍在内存中）。
 - `AUTH_ALLOW_INSECURE_SECRET=1` 只用于本地与 CI：它绕过「默认密钥拒绝启动」这条安全检查，任何非测试环境开启都等于自废鉴权。
+- **记忆召回是词汇级不是语义级**：字符二元组 + 覆盖率打分，同义改写（「下午」vs「午后」）召不回。要上语义只能换 embedding 检索，本项目为了「离线可跑、可解释」没做。
+- **长期记忆是本项目的扩展，不是 Pi 的能力**：Pi 的记忆就是 `AGENTS.md` + 会话树；可撤销记忆库、召回、投毒门禁都是为了补上「谁写进来的、怎么撤回」这两问。文档里始终分开写，不混成「Pi 原生」。
+- **投毒门禁是启发式**：挡的是明显的元指令、伪造角色行、特殊 token 与超长内容，挡不住措辞隐蔽的偏好污染。真生产需要人工审核队列，本项目没有做。
+- **记忆写入目前只有显式接口**（`POST /api/memories`），没有「从对话里自动抽取偏好」：自动抽取要么靠模型（不可归因、会写入幻觉），要么靠规则（召回率低），我选择先不做而不是做个半成品。
 - 本项目只做「同构最小实现 / 原理复现」，不声称重写公司系统；数据 mock，但流程、表结构与治理口径对齐真实系统。
 
 ## 9. 本系列项目
